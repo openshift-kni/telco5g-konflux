@@ -1,0 +1,11 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+component: "Telco Edge"
+subcomponent: "Konflux"
+
+filters:
+  ".*":
+    reviewers:
+      - telco5g-konflux-reviewers
+    approvers:
+      - telco5g-konflux-approvers
