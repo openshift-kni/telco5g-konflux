@@ -1,0 +1,17 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+aliases:
+  telco5g-konflux-reviewers:
+    - abraham2512
+    - fontivan
+    - rauhersu
+    - sabbir-47
+    - shajmakh
+    - yanirq
+  telco5g-konflux-approvers:
+    - abraham2512
+    - fontivan
+    - rauhersu
+    - sabbir-47
+    - shajmakh
+    - yanirq
