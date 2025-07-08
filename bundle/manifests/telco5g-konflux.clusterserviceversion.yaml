@@ -1,0 +1,547 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: ""
+    capabilities: Basic Install
+    containerImage: quay.io/openshift-kni/telco5g-konflux-operator
+    description: The Telco5G Konflux operator is for testing Konflux workflows only.
+    features.operators.openshift.io/cnf: "false"
+    features.operators.openshift.io/cni: "false"
+    features.operators.openshift.io/csi: "false"
+    features.operators.openshift.io/disconnected: "true"
+    features.operators.openshift.io/fips-compliant: "true"
+    features.operators.openshift.io/proxy-aware: "true"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "false"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
+    olm.skipRange: '>=4.14.0 <4.20.0'
+    operatorframework.io/suggested-namespace: openshift-telco5g-konflux
+    operatorframework.io/suggested-namespace-template: |-
+      {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "metadata": {
+          "name": "openshift-telco5g-konflux",
+          "annotations": {
+            "workload.openshift.io/allowed": "management"
+          }
+        }
+      }
+    operators.openshift.io/infrastructure-features: '["disconnected"]'
+    operators.openshift.io/valid-subscription: '["OpenShift Container Platform", "OpenShift
+      Platform Plus"]'
+    operators.operatorframework.io/builder: operator-sdk-v1.28.0-ocp
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    provider: Red Hat
+    repository: https://github.com/openshift-kni/telco5g-konflux
+    support: Red Hat
+  labels:
+    operatorframework.io/arch.amd64: supported
+  name: telco5g-konflux.v4.20.0
+  namespace: openshift-telco5g-konflux
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned: []
+  description: "For Testing Konflux Workflows only."
+  displayName: Telco5G Konflux
+  icon:
+  - base64data: PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTQ1Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPlJlZEhhdC1Mb2dvLUhhdC1Db2xvcjwvdGl0bGU+PHBhdGggZD0iTTE1Ny43Nyw2Mi42MWExNCwxNCwwLDAsMSwuMzEsMy40MmMwLDE0Ljg4LTE4LjEsMTcuNDYtMzAuNjEsMTcuNDZDNzguODMsODMuNDksNDIuNTMsNTMuMjYsNDIuNTMsNDRhNi40Myw2LjQzLDAsMCwxLC4yMi0xLjk0bC0zLjY2LDkuMDZhMTguNDUsMTguNDUsMCwwLDAtMS41MSw3LjMzYzAsMTguMTEsNDEsNDUuNDgsODcuNzQsNDUuNDgsMjAuNjksMCwzNi40My03Ljc2LDM2LjQzLTIxLjc3LDAtMS4wOCwwLTEuOTQtMS43My0xMC4xM1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMjcuNDcsODMuNDljMTIuNTEsMCwzMC42MS0yLjU4LDMwLjYxLTE3LjQ2YTE0LDE0LDAsMCwwLS4zMS0zLjQybC03LjQ1LTMyLjM2Yy0xLjcyLTcuMTItMy4yMy0xMC4zNS0xNS43My0xNi42QzEyNC44OSw4LjY5LDEwMy43Ni41LDk3LjUxLjUsOTEuNjkuNSw5MCw4LDgzLjA2LDhjLTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0Mi41Myw0NGMwLDkuMjIsMzYuMywzOS40NSw4NC45NCwzOS40NU0xNjAsNzIuMDdjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDNzguNTQsMTA0LDM3LjU4LDc2LjYsMzcuNTgsNTguNDlhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIyLjI3LDUyLC41LDU1LC41LDc0LjIyYzAsMzEuNDgsNzQuNTksNzAuMjgsMTMzLjY1LDcwLjI4LDQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48L3N2Zz4=
+    mediatype: image/svg+xml
+  install:
+    spec:
+      clusterPermissions: {}
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        - apiGroups:
+          - ""
+          resources:
+          - namespaces
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - nodes
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - pods/log
+          verbs:
+          - get
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - apiextensions.k8s.io
+          resources:
+          - customresourcedefinitions
+          verbs:
+          - delete
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        - apiGroups:
+          - batch
+          resources:
+          - jobs
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - batch
+          resources:
+          - jobs/status
+          verbs:
+          - get
+        - apiGroups:
+          - certificates.k8s.io
+          resources:
+          - certificatesigningrequests
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - clusteroperators
+          verbs:
+          - list
+          - watch
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - clusterversions
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - imagedigestmirrorsets
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - infrastructures
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - networks
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - proxies
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - persistentvolumes
+          verbs:
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - lca.openshift.io
+          resources:
+          - imagebasedupgrades
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - lca.openshift.io
+          resources:
+          - imagebasedupgrades/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - lca.openshift.io
+          resources:
+          - imagebasedupgrades/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - lca.openshift.io
+          resources:
+          - seedgenerators
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - lca.openshift.io
+          resources:
+          - seedgenerators/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - lca.openshift.io
+          resources:
+          - seedgenerators/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - local.storage.openshift.io
+          resources:
+          - localvolumes
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - lvm.topolvm.io
+          resources:
+          - lvmclusters
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - machineconfiguration.openshift.io
+          resources:
+          - machineconfigpools
+          verbs:
+          - list
+          - watch
+        - apiGroups:
+          - machineconfiguration.openshift.io
+          resources:
+          - machineconfigs
+          verbs:
+          - delete
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheusrules
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - networking.k8s.io
+          resources:
+          - networkpolicies
+          verbs:
+          - '*'
+        - apiGroups:
+          - oadp.openshift.io
+          resources:
+          - dataprotectionapplications
+          verbs:
+          - create
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - operator.openshift.io
+          resources:
+          - imagecontentsourcepolicies
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - operators.coreos.com
+          resources:
+          - clusterserviceversions
+          verbs:
+          - delete
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - operators.coreos.com
+          resources:
+          - subscriptions
+          verbs:
+          - delete
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - policy.open-cluster-management.io
+          resources:
+          - policies
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - clusterrolebindings
+          verbs:
+          - delete
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - clusterroles
+          verbs:
+          - delete
+        - apiGroups:
+          - security.openshift.io
+          resourceNames:
+          - privileged
+          resources:
+          - securitycontextconstraints
+          verbs:
+          - use
+        - apiGroups:
+          - sriovnetwork.openshift.io
+          resources:
+          - sriovnetworknodestates
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - storage.k8s.io
+          resources:
+          - storageclasses
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - velero.io
+          resources:
+          - backups
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - velero.io
+          resources:
+          - backupstoragelocations
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - velero.io
+          resources:
+          - deletebackuprequests
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - update
+          - watch
+        - apiGroups:
+          - velero.io
+          resources:
+          - restores
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - update
+          - watch
+        serviceAccountName: telco5g-konflux-controller-manager
+      deployments:
+      - label:
+          app.kubernetes.io/component: telco5g-konflux
+          app.kubernetes.io/name: telco5g-konflux-operator
+          control-plane: controller-manager
+        name: telco5g-konflux-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              app.kubernetes.io/component: telco5g-konflux
+              app.kubernetes.io/name: telco5g-konflux-operator
+              control-plane: controller-manager
+          strategy:
+            type: Recreate
+          template:
+            metadata:
+              annotations:
+                openshift.io/scc: privileged
+                target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
+              labels:
+                app.kubernetes.io/component: telco5g-konflux
+                app.kubernetes.io/name: telco5g-konflux-operator
+                control-plane: controller-manager
+            spec:
+              containers:
+              - args: {}
+                command:
+                - bash
+                env: {}
+                image: quay.io/openshift-kni/telco5g-konflux-operator:4.20.0
+                name: manager
+                ports: {}
+                resources:
+                  requests:
+                    cpu: 100m
+                    memory: 20Mi
+                securityContext:
+                  privileged: true
+                  readOnlyRootFilesystem: false
+                tty: true
+                volumeMounts:
+                - mountPath: /host
+                  name: host-root
+                - mountPath: /secrets/tls/metrics
+                  name: metrics-tls
+              hostPID: true
+              serviceAccountName: telco5g-konflux-controller-manager
+              terminationGracePeriodSeconds: 10
+              volumes:
+              - hostPath:
+                  path: /
+                  type: Directory
+                name: host-root
+              - name: metrics-tls
+                secret:
+                  defaultMode: 420
+                  secretName: controller-manager-metrics-tls
+      permissions:
+      - rules:
+        - apiGroups: {}
+        serviceAccountName: telco5g-konflux-controller-manager
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: false
+    type: AllNamespaces
+  keywords:
+  - konflux
+  links:
+  - name: Telco5G Konflux
+    url: https://telco5g-konflux.domain
+  maturity: alpha
+  provider:
+    name: Red Hat
+  replaces: telco5g-konflux.v0.0.0
+  version: 4.20.0

@@ -1,0 +1,5 @@
+# Component
+- key: manager
+  source: quay.io/openshift-kni/telco5g-konflux:4.20.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/telco5g-konflux@sha256:4a73508530039f06602281c0e8e659db9df8cbd09c8c595de08aa816a626a2bc 
+#
