@@ -63,7 +63,7 @@ $(VENV): $(ROOT_DIR)/requirements.txt
 
 # The 'lint' target runs all available linters.
 .PHONY: lint
-lint: yamllint shellcheck bashate ## Run all linters
+lint: yamllint shellcheck bashate konflux-filter-unused-repos ## Run all linters
 	@echo "All linters passed."
 
 # The 'yamllint' target depends on the virtual environment to ensure
@@ -168,3 +168,25 @@ konflux-generate-catalog-production: konflux-generate-catalog
         # From now on, all the related images must reference production (registry.redhat.io) exclusively
 	./hack/konflux-validate-related-images-production.sh --set-catalog-file $(CATALOG_KONFLUX)
 	$(OPM) validate .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/
+
+.PHONY: konflux-filter-unused-repos ## filter unused repositories from redhat.repo files
+konflux-filter-unused-repos:
+	@echo "Filtering unused repositories from redhat.repo files..."
+	@repo_files=$$(find . -name "redhat.repo" -type f | grep -v "./venv"); \
+	if [[ -z "$$repo_files" ]]; then \
+		echo "No redhat.repo files found in the repository."; \
+	else \
+		for repo_file in $$repo_files; do \
+			echo "Processing: $$repo_file"; \
+			if [[ -x "./hack/konflux-filter-unused-repos.sh" ]]; then \
+				enabled_count=$$(./hack/konflux-filter-unused-repos.sh "$$repo_file" | grep -c "^\[.*\]$$" || echo "0"); \
+				total_count=$$(grep -c "^\[.*\]$$" "$$repo_file" || echo "0"); \
+				echo "  Found $$enabled_count enabled repositories out of $$total_count total repositories"; \
+				echo "  Filtered output saved to: $${repo_file%.repo}.filtered.repo"; \
+				./hack/konflux-filter-unused-repos.sh "$$repo_file" > "$${repo_file%.repo}.filtered.repo"; \
+			else \
+				echo "  ERROR: hack/konflux-filter-unused-repos.sh not found or not executable"; \
+				exit 1; \
+			fi; \
+		done; \
+	fi
