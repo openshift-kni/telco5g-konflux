@@ -123,7 +123,7 @@ update_catalog_template_file() {
     fi
 
     # Override the last entry with the quay build
-    yq e -i ".entries[-1].image = \"$bundle_quay\"" $ARG_CATALOG_TEMPLATE_FILE
+    yq e -i ".entries[-1].image = \"$bundle_quay\"" "$ARG_CATALOG_TEMPLATE_FILE"
     echo "Updating catalog template file: $ARG_CATALOG_TEMPLATE_FILE with bundle: $bundle_quay"
 
     echo "Updating catalog template file completed!"

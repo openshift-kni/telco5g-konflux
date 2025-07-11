@@ -8,11 +8,11 @@ command -v skopeo >/dev/null 2>&1 || { echo >&2 "'skopeo' is required but it's n
 PIPELINE_FILE=""
 
 function update_manifest_if_outdated {
-    image=$(echo $1 | cut -d '@' -f 1)
-    manifest=$(echo $1 | cut -d '@' -f 2)
+    image=$(echo "$1" | cut -d '@' -f 1)
+    manifest=$(echo "$1" | cut -d '@' -f 2)
 
     new_manifest=$(skopeo inspect --format='{{ .Digest }}' "docker://${image}")
-    if [[ $? -ne 0 ]]; then
+    if ! skopeo inspect --format='{{ .Digest }}' "docker://${image}" >/dev/null 2>&1; then
         echo "error encountered running skopeo inspect against ${image}.  Aborting."; exit 1
     fi
 
@@ -20,7 +20,7 @@ function update_manifest_if_outdated {
         return # no new manifest
     fi
 
-    if update_manifest $image $manifest $new_manifest; then
+    if update_manifest "$image" "$manifest" "$new_manifest"; then
         echo "Updated manifest for ${image}:"
         echo "${manifest} => ${new_manifest}"
 
@@ -35,9 +35,9 @@ function update_manifest {
     new_manifest=$3
 
     if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' -e "s%${image}@${old_manifest}%${image}@${new_manifest}%g" $PIPELINE_FILE
+        sed -i '' -e "s%${image}@${old_manifest}%${image}@${new_manifest}%g" "$PIPELINE_FILE"
     else
-        sed -i -e "s%${image}@${old_manifest}%${image}@${new_manifest}%g" $PIPELINE_FILE
+        sed -i -e "s%${image}@${old_manifest}%${image}@${new_manifest}%g" "$PIPELINE_FILE"
     fi
     return $?
 }
@@ -47,9 +47,9 @@ for PIPELINE_FILE in "$@"; do
 
     active_manifests=()
     # Fetch the manifests that are currently used in our pipelines
-    IFS=$'\n' read -r -d '' -a active_manifests < <( yq '.spec.tasks[].taskRef.params | filter(.name == "bundle") | .[].value' $PIPELINE_FILE && printf '\0' )
+    IFS=$'\n' read -r -d '' -a active_manifests < <( yq '.spec.tasks[].taskRef.params | filter(.name == "bundle") | .[].value' "$PIPELINE_FILE" && printf '\0' )
 
     for manifest in "${active_manifests[@]}"; do
-        update_manifest_if_outdated $manifest
+        update_manifest_if_outdated "$manifest"
     done
 done

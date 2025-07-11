@@ -40,7 +40,7 @@ BEGIN {
     if (in_section && enabled) {
         print current_section
     }
-    
+
     # Start new section
     current_section = $0 "\n"
     in_section = 1
@@ -51,12 +51,12 @@ BEGIN {
 # Inside a section
 in_section {
     current_section = current_section $0 "\n"
-    
+
     # Check if this line indicates the repository is enabled
     if ($0 ~ /^enabled = 1$/) {
         enabled = 1
     }
-    
+
     # Check for empty line (end of section)
     if ($0 ~ /^[[:space:]]*$/) {
         # If this section was enabled, print it

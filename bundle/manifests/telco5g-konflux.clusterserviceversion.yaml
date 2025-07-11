@@ -52,7 +52,9 @@ spec:
     mediatype: image/svg+xml
   install:
     spec:
-      clusterPermissions: {}
+      clusterPermissions:
+      - serviceAccountName: telco5g-konflux-controller-manager
+        rules:
         - apiGroups:
           - ""
           resources:
@@ -462,9 +464,8 @@ spec:
           - list
           - update
           - watch
-        serviceAccountName: telco5g-konflux-controller-manager
       deployments:
-      - label:
+      - labels:
           app.kubernetes.io/component: telco5g-konflux
           app.kubernetes.io/name: telco5g-konflux-operator
           control-plane: controller-manager
@@ -489,13 +490,23 @@ spec:
                 control-plane: controller-manager
             spec:
               containers:
-              - args: {}
+              - args:
+                - --health-probe-bind-address=:8081
+                - --metrics-bind-address=127.0.0.1:8080
+                - --leader-elect
                 command:
-                - bash
-                env: {}
+                - /manager
+                env:
+                - name: WATCH_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.annotations['olm.targetNamespaces']
                 image: quay.io/openshift-kni/telco5g-konflux-operator:4.20.0
                 name: manager
-                ports: {}
+                ports:
+                - containerPort: 9443
+                  name: webhook-server
+                  protocol: TCP
                 resources:
                   requests:
                     cpu: 100m
@@ -522,9 +533,39 @@ spec:
                   defaultMode: 420
                   secretName: controller-manager-metrics-tls
       permissions:
-      - rules:
-        - apiGroups: {}
-        serviceAccountName: telco5g-konflux-controller-manager
+      - serviceAccountName: telco5g-konflux-controller-manager
+        rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
     strategy: deployment
   installModes:
   - supported: true
