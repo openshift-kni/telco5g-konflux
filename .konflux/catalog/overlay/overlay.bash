@@ -168,12 +168,76 @@ parse_pinning_images_file() {
     return 0
 }
 
+parse_release_file() {
+    echo "Parsing release file..."
+
+    if [[ ! -f "$ARG_RELEASE_FILE" ]]; then
+        echo "Error: File '$ARG_RELEASE_FILE' not found. " >&2
+        exit 1
+    fi
+
+    # Extract release configuration values
+    declare -g RELEASE_DISPLAY_NAME=$(yq eval '.displayName' "$ARG_RELEASE_FILE")
+    declare -g RELEASE_DESCRIPTION=$(yq eval '.description' "$ARG_RELEASE_FILE")
+    declare -g RELEASE_VERSION=$(yq eval '.version' "$ARG_RELEASE_FILE")
+    declare -g RELEASE_NAME=$(yq eval '.name' "$ARG_RELEASE_FILE")
+    declare -g RELEASE_MANAGER=$(yq eval '.manager' "$ARG_RELEASE_FILE")
+    declare -g RELEASE_SKIP_RANGE=$(yq eval '.skipRange' "$ARG_RELEASE_FILE")
+    declare -g RELEASE_REPLACES=$(yq eval '.replaces' "$ARG_RELEASE_FILE")
+    declare -g RELEASE_MIN_KUBE_VERSION=$(yq eval '.minKubeVersion' "$ARG_RELEASE_FILE")
+
+    # Validate that required fields are not null
+    if [[ "$RELEASE_DISPLAY_NAME" == "null" ]]; then
+        echo "Error: 'displayName' is required in release file." >&2
+        exit 1
+    fi
+    if [[ "$RELEASE_DESCRIPTION" == "null" ]]; then
+        echo "Error: 'description' is required in release file." >&2
+        exit 1
+    fi
+    if [[ "$RELEASE_VERSION" == "null" ]]; then
+        echo "Error: 'version' is required in release file." >&2
+        exit 1
+    fi
+    if [[ "$RELEASE_NAME" == "null" ]]; then
+        echo "Error: 'name' is required in release file." >&2
+        exit 1
+    fi
+    if [[ "$RELEASE_MANAGER" == "null" ]]; then
+        echo "Error: 'manager' is required in release file." >&2
+        exit 1
+    fi
+    if [[ "$RELEASE_SKIP_RANGE" == "null" ]]; then
+        echo "Error: 'skipRange' is required in release file." >&2
+        exit 1
+    fi
+    if [[ "$RELEASE_MIN_KUBE_VERSION" == "null" ]]; then
+        echo "Error: 'minKubeVersion' is required in release file." >&2
+        exit 1
+    fi
+
+    if [[ "$DEBUG" = true ]]; then
+        echo "Release configuration:"
+        echo "  displayName: $RELEASE_DISPLAY_NAME"
+        echo "  description: $RELEASE_DESCRIPTION"
+        echo "  version: $RELEASE_VERSION"
+        echo "  name: $RELEASE_NAME"
+        echo "  manager: $RELEASE_MANAGER"
+        echo "  skipRange: $RELEASE_SKIP_RANGE"
+        echo "  replaces: $RELEASE_REPLACES"
+        echo "  minKubeVersion: $RELEASE_MIN_KUBE_VERSION"
+    fi
+
+    echo "Parsing release file completed!"
+    return 0
+}
+
 parse_args() {
     echo "Parsing args..."
 
     # command line options
     local options=
-    local long_options="set-pinning-file:,set-mapping-file:,set-csv-file:,set-mapping-staging,set-mapping-production,help"
+    local long_options="set-pinning-file:,set-mapping-file:,set-release-file:,set-csv-file:,set-mapping-staging,set-mapping-production,help"
 
     local parsed=$(getopt --options="$options" --longoptions="$long_options" --name "$SCRIPT_NAME" -- "$@")
     eval set -- "$parsed"
@@ -182,6 +246,7 @@ parse_args() {
     local map_production=0
     declare -g ARG_MAPPING_FILE=""
     declare -g ARG_PINNING_FILE=""
+    declare -g ARG_RELEASE_FILE=""
     declare -g ARG_CSV_FILE=""
     declare -g ARG_MAP=""
     while true; do
@@ -200,6 +265,10 @@ parse_args() {
                 ;;
             --set-mapping-file)
                 ARG_MAPPING_FILE=$2
+                shift 2
+                ;;
+            --set-release-file)
+                ARG_RELEASE_FILE=$2
                 shift 2
                 ;;
             --set-mapping-staging)
@@ -224,9 +293,21 @@ parse_args() {
         esac
     done
 
+    # validate release file is required
+    if [[ -z $ARG_RELEASE_FILE ]]; then
+        echo "Error: '--set-release-file' is required." >&2
+        exit 1
+    fi
+
     # validate images file
     if [[ -n $ARG_PINNING_FILE && ! -f "$ARG_PINNING_FILE" ]]; then
         echo "Error: file '$ARG_PINNING_FILE' does not exist." >&2
+        exit 1
+    fi
+
+    # validate release file
+    if [[ -n $ARG_RELEASE_FILE && ! -f "$ARG_RELEASE_FILE" ]]; then
+        echo "Error: file '$ARG_RELEASE_FILE' does not exist." >&2
         exit 1
     fi
 
@@ -268,17 +349,16 @@ overlay_release()
 {
     echo "Overlaying release..."
 
-    local display_name="Telco5G Konflux"
-    local description="For Testing Konflux Workflows only."
-    local version="4.20.0"
-    local name="telco5g-konflux"
+    # Use values from release file (no defaults - release file is required)
+    local display_name="$RELEASE_DISPLAY_NAME"
+    local description="$RELEASE_DESCRIPTION"
+    local version="$RELEASE_VERSION"
+    local name="$RELEASE_NAME"
     local name_version="$name.v$version"
-    local manager="telco5g-konflux-operator"
-    local skip_range=">=4.9.0 <4.20.0"
-    local replaces="telco5g-konflux.v4.20.0"
-    # min_kube_version should match ocp
-    # https://access.redhat.com/solutions/4870701
-    export min_kube_version="1.32.0"
+    local manager="$RELEASE_MANAGER"
+    local skip_range="$RELEASE_SKIP_RANGE"
+    local replaces="$RELEASE_REPLACES"
+    local min_kube_version="$RELEASE_MIN_KUBE_VERSION"
 
     yq e -i ".metadata.annotations[\"containerImage\"] = \"${IMAGE_TO_TARGET[$MANAGER_KEY]}\"" $ARG_CSV_FILE
     yq e -i ".spec.displayName = \"$display_name\"" $ARG_CSV_FILE
@@ -288,11 +368,13 @@ overlay_release()
     yq e -i ".metadata.annotations[\"olm.skipRange\"] = \"$skip_range\"" $ARG_CSV_FILE
     yq e -i ".spec.minKubeVersion = \"$min_kube_version\"" $ARG_CSV_FILE
 
-    # dont need 'replaces' for first release in a new channel (4.20.0)
-    yq e -i "del(.spec.replaces)" $ARG_CSV_FILE
-
-    # use this from 4.20.1 onwards
-    # yq e -i ".spec.replaces = \"$replaces\"" $ARG_CSV_FILE
+    # Handle replaces field - only set if specified and not null
+    if [[ -n "$replaces" && "$replaces" != "null" ]]; then
+        yq e -i ".spec.replaces = \"$replaces\"" $ARG_CSV_FILE
+    else
+        # dont need 'replaces' for first release in a new channel (4.20.0)
+        yq e -i "del(.spec.replaces)" $ARG_CSV_FILE
+    fi
 
     echo "Overlaying release completed!"
 }
@@ -301,6 +383,7 @@ main() {
    check_preconditions
    parse_args "$@"
    parse_pinning_images_file
+   parse_release_file
    pin_images
    add_related_images
    overlay_release
@@ -315,18 +398,17 @@ NAME
 
 SYNOPSIS
 
-   $SCRIPT_NAME --set-pinning-file FILE [--set-mapping-file FILE (--set-mapping-staging|--set-mapping-production) --set-csv-file FILE
+   $SCRIPT_NAME --set-pinning-file FILE --set-release-file FILE [--set-mapping-file FILE (--set-mapping-staging|--set-mapping-production)] --set-csv-file FILE
 
 EXAMPLES
 
-   - Pin (sha256) images on 'lifecycle-agent.clusterserviceversion.yaml' according to the configuration on 'pin_images.in.yaml':
+   - Pin (sha256) images and use release configuration:
 
-     $ $SCRIPT_NAME --set-pinning-file pin_images.in.yaml --set-csv-file lifecycle-agent.clusterserviceversion.yaml
+     $ $SCRIPT_NAME --set-pinning-file pin_images.in.yaml --set-release-file release.in.yaml --set-csv-file lifecycle-agent.clusterserviceversion.yaml
 
-   - Pin (sha256) images on 'lifecycle-agent.clusterserviceversion.yaml' according to the configuration on 'pin_images.in.yaml'
-     and map them to the production registry according to the configuration on 'map_images.in.yaml':
+   - Pin (sha256) images with release configuration and map to production registry:
 
-     $ $SCRIPT_NAME --set-pinning-file pin_images.in.yaml --set-mapping-file map_images.in.yaml --set-mapping-production --set-csv-file lifecycle-agent.clusterserviceversion.yaml
+     $ $SCRIPT_NAME --set-pinning-file pin_images.in.yaml --set-release-file release.in.yaml --set-mapping-file map_images.in.yaml --set-mapping-production --set-csv-file lifecycle-agent.clusterserviceversion.yaml
 
 DESCRIPTION
 
@@ -336,6 +418,10 @@ ARGS
 
    --set-pinning-file FILE
       Set the pinning file to pin image refs to sha256
+
+   --set-release-file FILE
+      Set the release configuration file containing release metadata (displayName, description, version, etc.)
+      This argument is REQUIRED.
 
    --set-mapping-file FILE
       Set the mapping file to map image refs to another container registry
@@ -350,6 +436,19 @@ ARGS
 
    --help
       Display this help and exit.
+
+RELEASE FILE FORMAT
+
+   The release file should be a YAML file with the following structure:
+
+     displayName: "Telco5G Konflux"
+     description: "For Testing Konflux Workflows only."
+     version: "4.20.0"
+     name: "telco5g-konflux"
+     manager: "telco5g-konflux-operator"
+     skipRange: ">=4.9.0 <4.20.0"
+     replaces: "telco5g-konflux.v4.20.0"  # optional, omit for first release in channel
+     minKubeVersion: "1.32.0"
 
 EOF
 }

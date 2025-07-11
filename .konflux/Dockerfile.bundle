@@ -18,10 +18,11 @@ RUN mkdir -p $OVERLAY_PATH
 COPY .konflux/overlay/ $OVERLAY_PATH
 
 RUN $OVERLAY_PATH/overlay.bash \
-    --set-pinning-file $OVERLAY_PATH/pin_images.in.yaml \
+    --set-csv-file $MANIFESTS_PATH/telco5g-konflux.clusterserviceversion.yaml \
     --set-mapping-file $OVERLAY_PATH/map_images.in.yaml \
     --set-mapping-production \
-    --set-csv-file $MANIFESTS_PATH/telco5g-konflux.clusterserviceversion.yaml
+    --set-pinning-file $OVERLAY_PATH/pin_images.in.yaml \
+    --set-release-file $OVERLAY_PATH/release.yaml
 
 # From here downwards this should mostly match the non-konflux bundle, i.e., `bundle.Dockerfile`
 # However there are a few exceptions:
