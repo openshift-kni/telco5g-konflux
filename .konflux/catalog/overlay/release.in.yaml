@@ -1,0 +1,13 @@
+# Example release configuration file
+# This file contains the release metadata that will be applied to the CSV file
+
+displayName: "Telco5G Konflux"
+description: "For Testing Konflux Workflows only."
+version: "4.20.0"
+name: "telco5g-konflux"
+manager: "telco5g-konflux-operator"
+skipRange: ">=4.9.0 <4.20.0"
+# replaces: "telco5g-konflux.v4.20.0"  # uncomment for releases after 4.20.0
+# min_kube_version should match ocp
+# https://access.redhat.com/solutions/4870701
+minKubeVersion: "1.32.0"

@@ -1,0 +1,5 @@
+# Component
+- key: manager
+  staging: registry.stage.redhat.io/openshift4/telco5g-konflux
+  production: registry.redhat.io/openshift4/telco5g-konflux
+#
