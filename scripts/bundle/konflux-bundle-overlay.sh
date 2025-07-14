@@ -54,7 +54,7 @@ add_related_images() {
     for image_name in "${!IMAGE_TO_SOURCE[@]}"; do
         echo "Adding related image: name: $image_name source: ${IMAGE_TO_SOURCE[$image_name]}, image: ${IMAGE_TO_TARGET[$image_name]}"
         yq e -i ".spec.relatedImages[$index].name=\"$image_name\" |
-                .spec.relatedImages[$index].image=\"${IMAGE_TO_TARGET[$image_name]}\"" $ARG_CSV_FILE
+                 .spec.relatedImages[$index].image=\"${IMAGE_TO_TARGET[$image_name]}\"" $ARG_CSV_FILE
         index=$index+1
     done
 
@@ -168,86 +168,20 @@ parse_pinning_images_file() {
     return 0
 }
 
-parse_release_file() {
-    echo "Parsing release file..."
-
-    if [[ ! -f "$ARG_RELEASE_FILE" ]]; then
-        echo "Error: File '$ARG_RELEASE_FILE' not found. " >&2
-        exit 1
-    fi
-
-    # Extract release configuration values
-    declare -g RELEASE_DISPLAY_NAME=$(yq eval '.displayName' "$ARG_RELEASE_FILE")
-    declare -g RELEASE_DESCRIPTION=$(yq eval '.description' "$ARG_RELEASE_FILE")
-    declare -g RELEASE_VERSION=$(yq eval '.version' "$ARG_RELEASE_FILE")
-    declare -g RELEASE_NAME=$(yq eval '.name' "$ARG_RELEASE_FILE")
-    declare -g RELEASE_MANAGER=$(yq eval '.manager' "$ARG_RELEASE_FILE")
-    declare -g RELEASE_SKIP_RANGE=$(yq eval '.skipRange' "$ARG_RELEASE_FILE")
-    declare -g RELEASE_REPLACES=$(yq eval '.replaces' "$ARG_RELEASE_FILE")
-    declare -g RELEASE_MIN_KUBE_VERSION=$(yq eval '.minKubeVersion' "$ARG_RELEASE_FILE")
-
-    # Validate that required fields are not null
-    if [[ "$RELEASE_DISPLAY_NAME" == "null" ]]; then
-        echo "Error: 'displayName' is required in release file." >&2
-        exit 1
-    fi
-    if [[ "$RELEASE_DESCRIPTION" == "null" ]]; then
-        echo "Error: 'description' is required in release file." >&2
-        exit 1
-    fi
-    if [[ "$RELEASE_VERSION" == "null" ]]; then
-        echo "Error: 'version' is required in release file." >&2
-        exit 1
-    fi
-    if [[ "$RELEASE_NAME" == "null" ]]; then
-        echo "Error: 'name' is required in release file." >&2
-        exit 1
-    fi
-    if [[ "$RELEASE_MANAGER" == "null" ]]; then
-        echo "Error: 'manager' is required in release file." >&2
-        exit 1
-    fi
-    if [[ "$RELEASE_SKIP_RANGE" == "null" ]]; then
-        echo "Error: 'skipRange' is required in release file." >&2
-        exit 1
-    fi
-    if [[ "$RELEASE_MIN_KUBE_VERSION" == "null" ]]; then
-        echo "Error: 'minKubeVersion' is required in release file." >&2
-        exit 1
-    fi
-
-    if [[ "$DEBUG" = true ]]; then
-        echo "Release configuration:"
-        echo "  displayName: $RELEASE_DISPLAY_NAME"
-        echo "  description: $RELEASE_DESCRIPTION"
-        echo "  version: $RELEASE_VERSION"
-        echo "  name: $RELEASE_NAME"
-        echo "  manager: $RELEASE_MANAGER"
-        echo "  skipRange: $RELEASE_SKIP_RANGE"
-        echo "  replaces: $RELEASE_REPLACES"
-        echo "  minKubeVersion: $RELEASE_MIN_KUBE_VERSION"
-    fi
-
-    echo "Parsing release file completed!"
-    return 0
-}
-
 parse_args() {
     echo "Parsing args..."
 
     # command line options
     local options=
-    local long_options="set-pinning-file:,set-mapping-file:,set-release-file:,set-csv-file:,set-mapping-staging,set-mapping-production,help"
+    local long_options="set-pinning-file:,set-mapping-file:,set-csv-file:,set-mapping-staging,set-mapping-production,help"
 
-    local parsed
-    parsed=$(getopt --options="$options" --longoptions="$long_options" --name "$SCRIPT_NAME" -- "$@")
+    local parsed=$(getopt --options="$options" --longoptions="$long_options" --name "$SCRIPT_NAME" -- "$@")
     eval set -- "$parsed"
 
     local map_staging=0
     local map_production=0
     declare -g ARG_MAPPING_FILE=""
     declare -g ARG_PINNING_FILE=""
-    declare -g ARG_RELEASE_FILE=""
     declare -g ARG_CSV_FILE=""
     declare -g ARG_MAP=""
     while true; do
@@ -266,10 +200,6 @@ parse_args() {
                 ;;
             --set-mapping-file)
                 ARG_MAPPING_FILE=$2
-                shift 2
-                ;;
-            --set-release-file)
-                ARG_RELEASE_FILE=$2
                 shift 2
                 ;;
             --set-mapping-staging)
@@ -294,21 +224,9 @@ parse_args() {
         esac
     done
 
-    # validate release file is required
-    if [[ -z $ARG_RELEASE_FILE ]]; then
-        echo "Error: '--set-release-file' is required." >&2
-        exit 1
-    fi
-
     # validate images file
     if [[ -n $ARG_PINNING_FILE && ! -f "$ARG_PINNING_FILE" ]]; then
         echo "Error: file '$ARG_PINNING_FILE' does not exist." >&2
-        exit 1
-    fi
-
-    # validate release file
-    if [[ -n $ARG_RELEASE_FILE && ! -f "$ARG_RELEASE_FILE" ]]; then
-        echo "Error: file '$ARG_RELEASE_FILE' does not exist." >&2
         exit 1
     fi
 
@@ -350,16 +268,20 @@ overlay_release()
 {
     echo "Overlaying release..."
 
-    # Use values from release file (no defaults - release file is required)
-    local display_name="$RELEASE_DISPLAY_NAME"
-    local description="$RELEASE_DESCRIPTION"
-    local version="$RELEASE_VERSION"
-    local name="$RELEASE_NAME"
+    local display_name="Lifecycle Agent"
+    local description="# Lifecycle Agent for OpenShift\nThe Lifecycle Agent for OpenShift
+      provides local lifecycle management services \nfor Single Node Openshift (SNO)
+      clusters.\n\n## Where to find more information\nYou can find additional guidance
+      in the [agent repository](https://github.com/openshift-kni/lifecycle-agent).\n"
+    local version="4.20.0"
+    local name="lifecycle-agent"
     local name_version="$name.v$version"
-    local manager="$RELEASE_MANAGER"
-    local skip_range="$RELEASE_SKIP_RANGE"
-    local replaces="$RELEASE_REPLACES"
-    local min_kube_version="$RELEASE_MIN_KUBE_VERSION"
+    local manager="lifecycle-agent-operator"
+    local skip_range=">=4.9.0 <4.20.0"
+    local replaces="lifecycle-agent.v4.20.0"
+    # min_kube_version should match ocp
+    # https://access.redhat.com/solutions/4870701
+    export min_kube_version="1.32.0"
 
     yq e -i ".metadata.annotations[\"containerImage\"] = \"${IMAGE_TO_TARGET[$MANAGER_KEY]}\"" $ARG_CSV_FILE
     yq e -i ".spec.displayName = \"$display_name\"" $ARG_CSV_FILE
@@ -369,47 +291,50 @@ overlay_release()
     yq e -i ".metadata.annotations[\"olm.skipRange\"] = \"$skip_range\"" $ARG_CSV_FILE
     yq e -i ".spec.minKubeVersion = \"$min_kube_version\"" $ARG_CSV_FILE
 
-    # Handle replaces field - only set if specified and not null
-    if [[ -n "$replaces" && "$replaces" != "null" ]]; then
-        yq e -i ".spec.replaces = \"$replaces\"" $ARG_CSV_FILE
-    else
-        # dont need 'replaces' for first release in a new channel (4.20.0)
-        yq e -i "del(.spec.replaces)" $ARG_CSV_FILE
-    fi
+    # dont need 'replaces' for first release in a new channel (4.20.0)
+    yq e -i "del(.spec.replaces)" $ARG_CSV_FILE
+
+    # use this from 4.20.1 onwards
+    # yq e -i ".spec.replaces = \"$replaces\"" $ARG_CSV_FILE
+
+    # Special LCA considerations for the recert container
+    yq e -i ".spec.install.spec.deployments[0].spec.template.spec.containers[0].env[3].name = \"RELATED_IMAGE_RECERT_IMAGE\"" $ARG_CSV_FILE
+    RECERT_VALUE=$(yq '.[] | select(.key == "recert") | .target' "$ARG_PINNING_FILE")
+    yq e -i ".spec.install.spec.deployments[0].spec.template.spec.containers[0].env[3].value = \"$RECERT_VALUE\"" "$ARG_CSV_FILE"
 
     echo "Overlaying release completed!"
 }
 
 main() {
-    check_preconditions
-    parse_args "$@"
-    parse_pinning_images_file
-    parse_release_file
-    pin_images
-    add_related_images
-    overlay_release
-    map_images    # this MUST always be the last action
+   check_preconditions
+   parse_args "$@"
+   parse_pinning_images_file
+   pin_images
+   add_related_images
+   overlay_release
+   map_images    # this MUST always be the last action
 }
 
 usage() {
-    cat << EOF
+   cat << EOF
 NAME
 
    $SCRIPT_NAME - overlay operator csv
 
 SYNOPSIS
 
-   $SCRIPT_NAME --set-pinning-file FILE --set-release-file FILE [--set-mapping-file FILE (--set-mapping-staging|--set-mapping-production)] --set-csv-file FILE
+   $SCRIPT_NAME --set-pinning-file FILE [--set-mapping-file FILE (--set-mapping-staging|--set-mapping-production) --set-csv-file FILE
 
 EXAMPLES
 
-   - Pin (sha256) images and use release configuration:
+   - Pin (sha256) images on 'lifecycle-agent.clusterserviceversion.yaml' according to the configuration on 'pin_images.in.yaml':
 
-     $ $SCRIPT_NAME --set-pinning-file pin_images.in.yaml --set-release-file release.in.yaml --set-csv-file lifecycle-agent.clusterserviceversion.yaml
+     $ $SCRIPT_NAME --set-pinning-file pin_images.in.yaml --set-csv-file lifecycle-agent.clusterserviceversion.yaml
 
-   - Pin (sha256) images with release configuration and map to production registry:
+   - Pin (sha256) images on 'lifecycle-agent.clusterserviceversion.yaml' according to the configuration on 'pin_images.in.yaml'
+     and map them to the production registry according to the configuration on 'map_images.in.yaml':
 
-     $ $SCRIPT_NAME --set-pinning-file pin_images.in.yaml --set-release-file release.in.yaml --set-mapping-file map_images.in.yaml --set-mapping-production --set-csv-file lifecycle-agent.clusterserviceversion.yaml
+     $ $SCRIPT_NAME --set-pinning-file pin_images.in.yaml --set-mapping-file map_images.in.yaml --set-mapping-production --set-csv-file lifecycle-agent.clusterserviceversion.yaml
 
 DESCRIPTION
 
@@ -419,10 +344,6 @@ ARGS
 
    --set-pinning-file FILE
       Set the pinning file to pin image refs to sha256
-
-   --set-release-file FILE
-      Set the release configuration file containing release metadata (displayName, description, version, etc.)
-      This argument is REQUIRED.
 
    --set-mapping-file FILE
       Set the mapping file to map image refs to another container registry
@@ -437,41 +358,6 @@ ARGS
 
    --help
       Display this help and exit.
-
-PINNING FILE FORMAT
-
-   The pinning file should be a YAML file with an array of image mappings:
-
-     - key: "manager"
-       source: "quay.io/openshift-kni/telco5g-konflux-operator:latest"
-       target: "quay.io/openshift-kni/telco5g-konflux-operator@sha256:abcd1234..."
-     - key: "webhook"
-       source: "quay.io/openshift-kni/telco5g-konflux-webhook:latest"
-       target: "quay.io/openshift-kni/telco5g-konflux-webhook@sha256:efgh5678..."
-
-MAPPING FILE FORMAT
-
-   The mapping file should be a YAML file with an array of registry mappings:
-
-     - key: "manager"
-       staging: "registry.stage.redhat.io/openshift-kni/telco5g-konflux-operator"
-       production: "registry.redhat.io/openshift-kni/telco5g-konflux-operator"
-     - key: "webhook"
-       staging: "registry.stage.redhat.io/openshift-kni/telco5g-konflux-webhook"
-       production: "registry.redhat.io/openshift-kni/telco5g-konflux-webhook"
-
-RELEASE FILE FORMAT
-
-   The release file should be a YAML file with the following structure:
-
-     displayName: "Telco5G Konflux"
-     description: "For Testing Konflux Workflows only."
-     version: "4.20.0"
-     name: "telco5g-konflux"
-     manager: "telco5g-konflux-operator"
-     skipRange: ">=4.9.0 <4.20.0"
-     replaces: "telco5g-konflux.v4.20.0"  # optional, omit for first release in channel
-     minKubeVersion: "1.32.0"
 
 EOF
 }
