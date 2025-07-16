@@ -17,7 +17,7 @@ MANAGER_KEY="manager"
 
 debug() {
     if [ "$DEBUG" = true ]; then
-        echo "[DEBUG] $1"
+    echo "[DEBUG] $1"
     fi
 }
 
@@ -34,8 +34,8 @@ pin_images() {
     echo "Pinning images (sha256)..."
 
     for image_name in "${!IMAGE_TO_SOURCE[@]}"; do
-        echo "Replacing: image_name: $image_name, source: ${IMAGE_TO_SOURCE[$image_name]}, target: ${IMAGE_TO_TARGET[$image_name]}"
-        sed -i "s,${IMAGE_TO_SOURCE[$image_name]},${IMAGE_TO_TARGET[$image_name]},g" $ARG_CSV_FILE
+    echo "Replacing: image_name: $image_name, source: ${IMAGE_TO_SOURCE[$image_name]}, target: ${IMAGE_TO_TARGET[$image_name]}"
+    sed -i "s,${IMAGE_TO_SOURCE[$image_name]},${IMAGE_TO_TARGET[$image_name]},g" $ARG_CSV_FILE
     done
 
     echo "Pinning images completed!"
@@ -52,10 +52,10 @@ add_related_images() {
     # create a new section from scratch
     declare -i index=0
     for image_name in "${!IMAGE_TO_SOURCE[@]}"; do
-        echo "Adding related image: name: $image_name source: ${IMAGE_TO_SOURCE[$image_name]}, image: ${IMAGE_TO_TARGET[$image_name]}"
-        yq e -i ".spec.relatedImages[$index].name=\"$image_name\" |
-                 .spec.relatedImages[$index].image=\"${IMAGE_TO_TARGET[$image_name]}\"" $ARG_CSV_FILE
-        index=$index+1
+    echo "Adding related image: name: $image_name source: ${IMAGE_TO_SOURCE[$image_name]}, image: ${IMAGE_TO_TARGET[$image_name]}"
+    yq e -i ".spec.relatedImages[$index].name=\"$image_name\" |
+                .spec.relatedImages[$index].image=\"${IMAGE_TO_TARGET[$image_name]}\"" $ARG_CSV_FILE
+    index=$index+1
     done
 
     echo "Adding related images completed!"
@@ -77,10 +77,10 @@ parse_mapping_images_file() {
 
     declare -i i=0
     for ((; i<entries; i++)); do
-        # Store in associative arrays
-        local key=${keys[i]}
-        IMAGE_TO_STAGING["$key"]="${staging_images[i]}"
-        IMAGE_TO_PRODUCTION["$key"]="${production_images[i]}"
+    # Store in associative arrays
+    local key=${keys[i]}
+    IMAGE_TO_STAGING["$key"]="${staging_images[i]}"
+    IMAGE_TO_PRODUCTION["$key"]="${production_images[i]}"
     done
 
     echo "Parsing mapping image file completed!"
@@ -90,8 +90,8 @@ parse_mapping_images_file() {
 map_images() {
 
     if [[ ! -f "$ARG_MAPPING_FILE" ]]; then
-        echo "Skipping images mapping!"
-        return 0
+    echo "Skipping images mapping!"
+    return 0
     fi
 
     echo "Mapping images ..."
@@ -99,32 +99,32 @@ map_images() {
     parse_mapping_images_file
 
     for image_name in "${!IMAGE_TO_TARGET[@]}"; do
-        local image_name_target="${IMAGE_TO_TARGET[$image_name]}"
+    local image_name_target="${IMAGE_TO_TARGET[$image_name]}"
 
-        # requires an image already pinned, sha256 format: '...@sha256:..."
-        local image_name_target_trimmed="${image_name_target%@*}"
+    # requires an image already pinned, sha256 format: '...@sha256:..."
+    local image_name_target_trimmed="${image_name_target%@*}"
 
-        local image_name_target_trimmed_mapped=""
-        if [[ "$ARG_MAP" == "$MAP_STAGING" ]]; then
-            if [[ -z "${IMAGE_TO_STAGING[$image_name]-}" ]]; then
-                echo "Warning: no staging image mapped for: $image_name" >&2
-                continue
-            fi
-
-            image_name_target_trimmed_mapped="${IMAGE_TO_STAGING[$image_name]}"
-
-        elif [[ "$ARG_MAP" == "$MAP_PRODUCTION" ]]; then
-            if [[ -z "${IMAGE_TO_PRODUCTION[$image_name]-}" ]]; then
-                echo "Warning: no production image mapped for: $image_name" >&2
-                continue
-            fi
-
-            image_name_target_trimmed_mapped="${IMAGE_TO_PRODUCTION[$image_name]}"
-
+    local image_name_target_trimmed_mapped=""
+    if [[ "$ARG_MAP" == "$MAP_STAGING" ]]; then
+        if [[ -z "${IMAGE_TO_STAGING[$image_name]-}" ]]; then
+            echo "Warning: no staging image mapped for: $image_name" >&2
+            continue
         fi
 
-        echo "Replacing: image_name: $image_name, original: $image_name_target_trimmed, mapped: $image_name_target_trimmed_mapped"
-        sed -i "s,$image_name_target_trimmed,$image_name_target_trimmed_mapped,g" $ARG_CSV_FILE
+        image_name_target_trimmed_mapped="${IMAGE_TO_STAGING[$image_name]}"
+
+    elif [[ "$ARG_MAP" == "$MAP_PRODUCTION" ]]; then
+        if [[ -z "${IMAGE_TO_PRODUCTION[$image_name]-}" ]]; then
+            echo "Warning: no production image mapped for: $image_name" >&2
+            continue
+        fi
+
+        image_name_target_trimmed_mapped="${IMAGE_TO_PRODUCTION[$image_name]}"
+
+    fi
+
+    echo "Replacing: image_name: $image_name, original: $image_name_target_trimmed, mapped: $image_name_target_trimmed_mapped"
+    sed -i "s,$image_name_target_trimmed,$image_name_target_trimmed_mapped,g" $ARG_CSV_FILE
     done
 
     echo "Mapping images completed"
@@ -134,8 +134,8 @@ parse_pinning_images_file() {
     echo "Parsing pinning file..."
 
     if [[ ! -f "$ARG_PINNING_FILE" ]]; then
-        echo "Error: File '$ARG_PINNING_FILE' not found. " >&2
-        exit 1
+    echo "Error: File '$ARG_PINNING_FILE' not found. " >&2
+    exit 1
     fi
 
     # Extract keys and images
@@ -150,18 +150,18 @@ parse_pinning_images_file() {
 
     declare -i i=0
     for ((; i<entries; i++)); do
-        # Store in associative arrays
-        local key=${keys[i]}
-        IMAGE_TO_SOURCE["$key"]="${sources[i]}"
-        IMAGE_TO_TARGET["$key"]="${targets[i]}"
+    # Store in associative arrays
+    local key=${keys[i]}
+    IMAGE_TO_SOURCE["$key"]="${sources[i]}"
+    IMAGE_TO_TARGET["$key"]="${targets[i]}"
     done
 
     if [ "$DEBUG" = true ]; then
-        for key in "${!IMAGE_TO_SOURCE[@]}"; do
-            echo "- key: $key"
-            echo "  source: ${IMAGE_TO_SOURCE[$name]}"
-            echo "  target: ${IMAGE_TO_TARGET[$name]}"
-        done
+    for key in "${!IMAGE_TO_SOURCE[@]}"; do
+        echo "- key: $key"
+        echo "  source: ${IMAGE_TO_SOURCE[$name]}"
+        echo "  target: ${IMAGE_TO_TARGET[$name]}"
+    done
     fi
 
     echo "Parsing pinning file completed!"
@@ -175,7 +175,8 @@ parse_args() {
     local options=
     local long_options="set-pinning-file:,set-mapping-file:,set-csv-file:,set-mapping-staging,set-mapping-production,help"
 
-    local parsed=$(getopt --options="$options" --longoptions="$long_options" --name "$SCRIPT_NAME" -- "$@")
+    local parsed
+    parsed=$(getopt --options="$options" --longoptions="$long_options" --name "$SCRIPT_NAME" -- "$@")
     eval set -- "$parsed"
 
     local map_staging=0
@@ -185,80 +186,80 @@ parse_args() {
     declare -g ARG_CSV_FILE=""
     declare -g ARG_MAP=""
     while true; do
-        case $1 in
-            --help)
-                usage
-                exit
-                ;;
-            --set-csv-file)
-                ARG_CSV_FILE=$2
-                shift 2
-                ;;
-            --set-pinning-file)
-                ARG_PINNING_FILE=$2
-                shift 2
-                ;;
-            --set-mapping-file)
-                ARG_MAPPING_FILE=$2
-                shift 2
-                ;;
-            --set-mapping-staging)
-                map_staging=1
-                ARG_MAP=$MAP_STAGING
-                shift 1
-                ;;
-            --set-mapping-production)
-                map_production=1
-                ARG_MAP=$MAP_PRODUCTION
-                shift 1
-                ;;
-            --)
-                shift
-                break
-                ;;
-            *)
-                echo "Error: unexpected option: $1" >&2
-                usage
-                exit 1
-                ;;
-        esac
+    case $1 in
+        --help)
+            usage
+            exit
+            ;;
+        --set-csv-file)
+            ARG_CSV_FILE=$2
+            shift 2
+            ;;
+        --set-pinning-file)
+            ARG_PINNING_FILE=$2
+            shift 2
+            ;;
+        --set-mapping-file)
+            ARG_MAPPING_FILE=$2
+            shift 2
+            ;;
+        --set-mapping-staging)
+            map_staging=1
+            ARG_MAP=$MAP_STAGING
+            shift 1
+            ;;
+        --set-mapping-production)
+            map_production=1
+            ARG_MAP=$MAP_PRODUCTION
+            shift 1
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Error: unexpected option: $1" >&2
+            usage
+            exit 1
+            ;;
+    esac
     done
 
     # validate images file
     if [[ -n $ARG_PINNING_FILE && ! -f "$ARG_PINNING_FILE" ]]; then
-        echo "Error: file '$ARG_PINNING_FILE' does not exist." >&2
-        exit 1
+    echo "Error: file '$ARG_PINNING_FILE' does not exist." >&2
+    exit 1
     fi
 
     # validate csv file
     if [[ -n $ARG_CSV_FILE && ! -f "$ARG_CSV_FILE" ]]; then
-        echo "Error: file '$ARG_CSV_FILE' does not exist." >&2
-        exit 1
+    echo "Error: file '$ARG_CSV_FILE' does not exist." >&2
+    exit 1
     fi
 
     # validate map options
     if [[ $map_staging -eq 1 && $map_production -eq 1 ]]; then
-        echo "Error: cannot specify both '--set-mapping-staging' and '--set-mapping-production'." >&2
-        exit 1
+    echo "Error: cannot specify both '--set-mapping-staging' and '--set-mapping-production'." >&2
+    exit 1
     fi
 
     if [[ $map_staging -eq 1 || $map_production -eq 1 ]]; then
-        if [[ ! -n $ARG_MAPPING_FILE ]]; then
-            echo "Error: specify '--set-mapping-file' to use a container registry map file." >&2
-            exit 1
-        fi
+    if [[ ! -n $ARG_MAPPING_FILE ]]; then
+        echo "Error: specify '--set-mapping-file' to use a container registry map file." >&2
+        exit 1
+    fi
 
-        if [[ ! -f "$ARG_MAPPING_FILE" ]]; then
-            echo "Error: file '$ARG_MAPPING_FILE' does not exist." >&2
-            exit 1
-        fi
+    if [[ ! -f "$ARG_MAPPING_FILE" ]]; then
+        echo "Error: file '$ARG_MAPPING_FILE' does not exist." >&2
+        exit 1
+    fi
     fi
 
     if [[ -n $ARG_MAPPING_FILE ]]; then
-        if [[ $map_staging -eq 0 && $map_production -eq 0 ]]; then
-            echo "Error: specify '--set-mapping-staging' or '--set-mapping-production'." >&2
-            exit 1
-        fi
+    if [[ $map_staging -eq 0 && $map_production -eq 0 ]]; then
+        echo "Error: specify '--set-mapping-staging' or '--set-mapping-production'." >&2
+        exit 1
+    fi
     fi
 
     echo "Parsing args completed!"
@@ -270,9 +271,9 @@ overlay_release()
 
     local display_name="Lifecycle Agent"
     local description="# Lifecycle Agent for OpenShift\nThe Lifecycle Agent for OpenShift
-      provides local lifecycle management services \nfor Single Node Openshift (SNO)
-      clusters.\n\n## Where to find more information\nYou can find additional guidance
-      in the [agent repository](https://github.com/openshift-kni/lifecycle-agent).\n"
+    provides local lifecycle management services \nfor Single Node Openshift (SNO)
+    clusters.\n\n## Where to find more information\nYou can find additional guidance
+    in the [agent repository](https://github.com/openshift-kni/lifecycle-agent).\n"
     local version="4.20.0"
     local name="lifecycle-agent"
     local name_version="$name.v$version"
@@ -306,17 +307,17 @@ overlay_release()
 }
 
 main() {
-   check_preconditions
-   parse_args "$@"
-   parse_pinning_images_file
-   pin_images
-   add_related_images
-   overlay_release
-   map_images    # this MUST always be the last action
+    check_preconditions
+    parse_args "$@"
+    parse_pinning_images_file
+    pin_images
+    add_related_images
+    overlay_release
+    map_images    # this MUST always be the last action
 }
 
 usage() {
-   cat << EOF
+    cat << EOF
 NAME
 
    $SCRIPT_NAME - overlay operator csv
@@ -350,8 +351,8 @@ ARGS
 
       When used, it must be accompanied by either:
 
-        --set-mapping-staging    map to 'registry.stage.redhat.io'
-        --set-mapping-production map to 'registry.redhat.io'
+    --set-mapping-staging    map to 'registry.stage.redhat.io'
+    --set-mapping-production map to 'registry.redhat.io'
 
    --set-csv-file FILE
       Set the cluster service version file
