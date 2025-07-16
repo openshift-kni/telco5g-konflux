@@ -100,9 +100,10 @@ konflux-generate-catalog-production: konflux-generate-catalog ## Generate a regi
 	@echo "  To: $(PRODUCTION_BUNDLE_IMAGE)"
 	# overlay the bundle image for production
 	if [ "$$(uname)" = "Darwin" ]; then \
-		sed -i '' 's|$(QUAY_BUNDLE_IMAGE)@sha256:[a-f0-9]*|$(PRODUCTION_BUNDLE_IMAGE)|g' $(CATALOG_KONFLUX); \
+		sed -i '' 's|$(QUAY_BUNDLE_IMAGE)\(@sha256:[a-f0-9]*\)|$(PRODUCTION_BUNDLE_IMAGE)\1|g' $(CATALOG_KONFLUX); \
 	else \
-		sed -i 's|$(QUAY_BUNDLE_IMAGE)@sha256:[a-f0-9]*|$(PRODUCTION_BUNDLE_IMAGE)|g' $(CATALOG_KONFLUX); \
+		sed -i 's|$(QUAY_BUNDLE_IMAGE)\(@sha256:[a-f0-9]*\)|$(PRODUCTION_BUNDLE_IMAGE)\1|g' $(CATALOG_KONFLUX); \
+	fi
 	fi	# From now on, all the related images must reference production (registry.redhat.io) exclusively
 	$(SCRIPT_DIR)/konflux-validate-related-images-production.sh --set-catalog-file $(CATALOG_KONFLUX)
 	$(OPM) validate $(dir $(CATALOG_KONFLUX))
