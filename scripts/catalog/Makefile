@@ -83,15 +83,15 @@ konflux-validate-catalog-template-bundle: yq operator-sdk ## Validate the last b
 
 .PHONY: konflux-validate-catalog
 konflux-validate-catalog: opm ## Validate the current catalog file
-	@echo "validating catalog: .konflux/catalog/$(PACKAGE_NAME_KONFLUX)"
-	$(OPM) validate .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/
+	@echo "validating catalog: $(dir $(CATALOG_KONFLUX))"
+	$(OPM) validate $(dir $(CATALOG_KONFLUX))
 
 .PHONY: konflux-generate-catalog
 konflux-generate-catalog: yq opm ## Generate a quay.io catalog
 	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
 	touch $(CATALOG_KONFLUX)
 	$(OPM) alpha render-template basic --output yaml --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
-	$(OPM) validate .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/
+	$(OPM) validate $(dir $(CATALOG_KONFLUX))
 
 .PHONY: konflux-generate-catalog-production
 konflux-generate-catalog-production: konflux-generate-catalog ## Generate a registry.redhat.io catalog
@@ -99,10 +99,13 @@ konflux-generate-catalog-production: konflux-generate-catalog ## Generate a regi
 	@echo "  From: $(QUAY_BUNDLE_IMAGE)"
 	@echo "  To: $(PRODUCTION_BUNDLE_IMAGE)"
 	# overlay the bundle image for production
-	sed -i 's|$(QUAY_BUNDLE_IMAGE)|$(PRODUCTION_BUNDLE_IMAGE)|g' $(CATALOG_KONFLUX)
-	# From now on, all the related images must reference production (registry.redhat.io) exclusively
+	if [ "$$(uname)" = "Darwin" ]; then \
+		sed -i '' 's|$(QUAY_BUNDLE_IMAGE)@sha256:[a-f0-9]*|$(PRODUCTION_BUNDLE_IMAGE)|g' $(CATALOG_KONFLUX); \
+	else \
+		sed -i 's|$(QUAY_BUNDLE_IMAGE)@sha256:[a-f0-9]*|$(PRODUCTION_BUNDLE_IMAGE)|g' $(CATALOG_KONFLUX); \
+	fi	# From now on, all the related images must reference production (registry.redhat.io) exclusively
 	$(SCRIPT_DIR)/konflux-validate-related-images-production.sh --set-catalog-file $(CATALOG_KONFLUX)
-	$(OPM) validate .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/
+	$(OPM) validate $(dir $(CATALOG_KONFLUX))
 
 .PHONY: help
 help: ## Display available targets
