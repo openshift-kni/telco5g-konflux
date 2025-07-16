@@ -31,8 +31,8 @@ The operator SDK version is automatically determined based on the OpenShift vers
 
 Arguments:
     OPENSHIFT_VERSION     OpenShift version for mirror path (default: ${DEFAULT_OPENSHIFT_VERSION})
-                         Format: X.Y (e.g., 4.12) or X.Y.Z (e.g., 4.12.76)
-                         When using X.Y format, the latest release is automatically found
+                        Format: X.Y (e.g., 4.12) or X.Y.Z (e.g., 4.12.76)
+                        When using X.Y format, the latest release is automatically found
 
 Options:
     -d, --install-dir DIR Install directory (default: ${DEFAULT_INSTALL_DIR})
@@ -58,30 +58,30 @@ EOF
 get_latest_release() {
     local major_minor="$1"
     local arch="$2"
-    
+
     echo "Finding latest release for OpenShift ${major_minor}..." >&2
-    
+
     # List the directory contents to find available versions
     local base_url="https://mirror.openshift.com/pub/openshift-v4/${arch}/clients/operator-sdk/"
-    
+
     local listing
     if listing=$(curl -s "${base_url}" 2>/dev/null); then
         # Extract versions that match the Major.Minor pattern and find the latest
         # Use a portable approach that works on both BSD sed (macOS) and GNU sed (Linux)
         local latest_version
         latest_version=$(echo "$listing" | \
-                         grep -o "href=\"${major_minor}\.[0-9][0-9]*/" | \
-                         cut -d'"' -f2 | \
-                         tr -d '/' | \
-                         sort -V | \
-                         tail -1)
-        
+                        grep -o "href=\"${major_minor}\.[0-9][0-9]*/" | \
+                        cut -d'"' -f2 | \
+                        tr -d '/' | \
+                        sort -V | \
+                        tail -1)
+
         if [[ -n "$latest_version" ]]; then
             echo "$latest_version"
             return 0
         fi
     fi
-    
+
     # If we can't discover it, return empty and we'll handle the error in main
     echo ""
     return 1
@@ -92,28 +92,28 @@ get_operator_sdk_version() {
     local openshift_version="$1"
     local arch="$2"
     local os="$3"
-    
+
     # List the directory contents to find available operator-sdk files
     local base_url="https://mirror.openshift.com/pub/openshift-v4/${arch}/clients/operator-sdk/${openshift_version}/"
-    
+
     echo "Discovering available operator-sdk version for OpenShift ${openshift_version}..." >&2
-    
+
     # Try to get directory listing and extract operator SDK version
     local listing
     if listing=$(curl -s "${base_url}" 2>/dev/null); then
         # Look for operator-sdk files and extract version using portable approach
         local operator_sdk_version
         operator_sdk_version=$(echo "$listing" | \
-                               grep -o "operator-sdk-v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*-ocp-${os}-${arch}\.tar\.gz" | \
-                               head -1 | \
-                               cut -d'-' -f3)
-        
+                        grep -o "operator-sdk-v[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*-ocp-${os}-${arch}\.tar\.gz" | \
+                        head -1 | \
+                        cut -d'-' -f3)
+
         if [[ -n "$operator_sdk_version" ]]; then
             echo "$operator_sdk_version"
             return 0
         fi
     fi
-    
+
     # If we can't discover it, return empty and we'll handle the error in main
     echo ""
     return 1
@@ -150,7 +150,7 @@ main() {
                 local version_arg="$1"
                 # Remove 'v' prefix if present
                 version_arg="${version_arg#v}"
-                
+
                 if [[ "$version_arg" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
                     openshift_version="$version_arg"
                     shift
@@ -208,13 +208,13 @@ main() {
                 echo "Please check if the OpenShift version is valid and available on the mirror."
                 exit 1
             fi
-            
+
             if [[ -z "$resolved_version" ]]; then
                 echo "Error: No releases found for OpenShift ${openshift_version} on ${arch}"
                 echo "Available versions can be found at: https://mirror.openshift.com/pub/openshift-v4/${arch}/clients/operator-sdk/"
                 exit 1
             fi
-            
+
             echo "Found latest release: ${resolved_version}"
         fi
 
@@ -226,13 +226,13 @@ main() {
             echo "Please check if the OpenShift version is valid and available on the mirror."
             exit 1
         fi
-        
+
         if [[ -z "$operator_sdk_version" ]]; then
             echo "Error: No operator SDK found for OpenShift ${resolved_version} on ${os}/${arch}"
             echo "Available versions can be found at: https://mirror.openshift.com/pub/openshift-v4/${arch}/clients/operator-sdk/"
             exit 1
         fi
-        
+
         echo "Found operator SDK version: ${operator_sdk_version}"
 
         # Create the installation directory if it doesn't already exist.
@@ -260,7 +260,7 @@ main() {
             echo "Failed to install tool - binary doesn't execute properly"
             exit 1
         fi
-        
+
         # Get the actual version for confirmation
         actual_version=$(bash -c "${install_path} version" | head -1 || echo "version check failed")
         echo "operator-sdk installed successfully to ${install_path}"
