@@ -10,7 +10,7 @@ REPO_FILE ?= redhat.repo
 .PHONY: filter-unused-repos
 filter-unused-repos: ## Filter unused repositories from redhat.repo files (use REPO_FILE=path to specify file)
 	@echo "Filtering unused repositories from $(REPO_FILE)..."
-	$(SCRIPT_DIR)/konflux-filter-unused-repos.sh $(REPO_FILE)
+	$(SCRIPT_DIR)/konflux-filter-unused-repos.sh $(REPO_FILE) > $(REPO_FILE).tmp && mv $(REPO_FILE).tmp $(REPO_FILE)
 
 .PHONY: help
 help: ## Display available targets

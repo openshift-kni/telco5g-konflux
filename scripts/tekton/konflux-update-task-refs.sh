@@ -49,7 +49,12 @@ for PIPELINE_FILE in "$@"; do
     # Fetch the manifests that are currently used in our pipelines
     IFS=$'\n' read -r -d '' -a active_manifests < <( yq '.spec.tasks[].taskRef.params | filter(.name == "bundle") | .[].value' "$PIPELINE_FILE" && printf '\0' )
 
-    for manifest in "${active_manifests[@]}"; do
-        update_manifest_if_outdated "$manifest"
-    done
+    # Check if we have any manifests to process
+    if [[ ${#active_manifests[@]} -gt 0 ]]; then
+        for manifest in "${active_manifests[@]}"; do
+            update_manifest_if_outdated "$manifest"
+        done
+    else
+        echo "No task manifests found in ${PIPELINE_FILE}"
+    fi
 done
