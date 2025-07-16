@@ -26,7 +26,7 @@ if [[ ! -f "$REPO_FILE" ]]; then
     exit 1
 fi
 
-# Use awk to filter the repo file
+# Use awk to filter the repo file and remove excessive newlines
 awk '
 BEGIN {
     in_section = 0
@@ -38,7 +38,7 @@ BEGIN {
 /^\[.*\]$/ {
     # If we were in a section and it was enabled, print it
     if (in_section && enabled) {
-        print current_section
+        printf "%s", current_section
     }
 
     # Start new section
@@ -61,7 +61,7 @@ in_section {
     if ($0 ~ /^[[:space:]]*$/) {
         # If this section was enabled, print it
         if (enabled) {
-            print current_section
+            printf "%s", current_section
         }
         in_section = 0
         current_section = ""
@@ -81,7 +81,7 @@ in_section {
 END {
     # If we were in a section and it was enabled, print it
     if (in_section && enabled) {
-        print current_section
+        printf "%s", current_section
     }
 }
-' "$REPO_FILE"
+' "$REPO_FILE" | sed '/^$/N;/^\n$/d'
