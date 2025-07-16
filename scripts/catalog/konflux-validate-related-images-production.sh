@@ -69,8 +69,10 @@ validate_related_images() {
         exit 1
     fi
 
-    local images_parsed
-    mapfile -t images_parsed < <(yq eval -N '.relatedImages | .[] | .image' "$ARG_CATALOG_FILE")
+    local images_parsed=()
+    while IFS= read -r line; do
+        images_parsed+=("$line")
+    done < <(yq eval -N '.relatedImages | .[] | .image' "$ARG_CATALOG_FILE")
     entries=${#images_parsed[@]}
 
     declare -i i=0
