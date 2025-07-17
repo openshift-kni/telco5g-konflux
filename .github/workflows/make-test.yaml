@@ -17,4 +17,4 @@ jobs:
       - name: Remove local yq as it interferes with the test
         run: sudo rm -f $(which yq)
       - name: Run make test locally for the download scripts
-        run: make -C scripts/download test-local || cat scripts/download/tests/test_results.log
+        run: make -C scripts/download test-local || (cat scripts/download/tests/test_results.log && exit 1)
