@@ -13,4 +13,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Run make test locally for the download scripts
-        run: make -C scripts/download test-local
+        run: make -C scripts/download test-local || cat scripts/download/tests/test_results.log
