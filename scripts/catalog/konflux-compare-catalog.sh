@@ -51,6 +51,100 @@ verbose_log() {
     fi
 }
 
+# Function to calculate SHA256 checksum in a cross-platform way
+calculate_sha256() {
+    local file="$1"
+
+    if command -v sha256sum >/dev/null 2>&1; then
+        # Linux/Unix systems
+        sha256sum "$file" | cut -d' ' -f1
+    elif command -v shasum >/dev/null 2>&1; then
+        # macOS systems
+        shasum -a 256 "$file" | cut -d' ' -f1
+    else
+        echo "ERROR: Neither sha256sum nor shasum command found. Cannot calculate checksums." >&2
+        exit 1
+    fi
+}
+
+# Function to find container runtime (podman or docker)
+find_container_runtime() {
+    if command -v podman >/dev/null 2>&1; then
+        echo "podman"
+    elif command -v docker >/dev/null 2>&1; then
+        echo "docker"
+    else
+        echo "ERROR: Neither podman nor docker is available. A container runtime is required." >&2
+        exit 1
+    fi
+}
+
+# Function to detect current platform and architecture
+detect_platform() {
+    local os arch
+
+    # Detect OS
+    case "$(uname -s)" in
+        Darwin)
+            os="darwin"
+            ;;
+        Linux)
+            os="linux"
+            ;;
+        *)
+            # Default to linux for unknown systems
+            os="linux"
+            ;;
+    esac
+
+    # Detect architecture
+    case "$(uname -m)" in
+        x86_64)
+            arch="amd64"
+            ;;
+        aarch64|arm64)
+            arch="arm64"
+            ;;
+        *)
+            # Default to amd64 for unknown architectures
+            arch="amd64"
+            ;;
+    esac
+
+    echo "${os}/${arch}"
+}
+
+# Function to try pulling image with platform fallback
+pull_image_with_fallback() {
+    local image="$1"
+    local runtime="$2"
+    local current_platform="$3"
+    local fallback_platform="linux/amd64"
+
+    verbose_log "Attempting to pull image for platform: $current_platform"
+
+    # Try pulling for current platform first
+    if "$runtime" pull --platform "$current_platform" "$image" >/dev/null 2>&1; then
+        verbose_log "Successfully pulled image for platform: $current_platform"
+        echo "$current_platform"
+        return 0
+    fi
+
+    # Fall back to linux/amd64 if current platform fails
+    if [[ "$current_platform" != "$fallback_platform" ]]; then
+        verbose_log "Failed to pull for $current_platform, falling back to: $fallback_platform"
+
+        if "$runtime" pull --platform "$fallback_platform" "$image" >/dev/null 2>&1; then
+            verbose_log "Successfully pulled image for fallback platform: $fallback_platform"
+            echo "$fallback_platform"
+            return 0
+        fi
+    fi
+
+    # If both attempts fail, return error
+    return 1
+}
+
 # Function to cleanup temporary files
 cleanup() {
     if [[ "$CLEANUP" == "true" && -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
@@ -142,22 +236,27 @@ mkdir -p "$EXTRACT_DIR"
 log "Comparing catalog: $CATALOG_FILE"
 log "Against upstream image: $UPSTREAM_IMAGE"
 
-# Check if podman is available
-if ! command -v podman >/dev/null 2>&1; then
-    echo "ERROR: podman is required but not installed" >&2
+# Find available container runtime
+CONTAINER_RUNTIME=$(find_container_runtime)
+verbose_log "Using container runtime: $CONTAINER_RUNTIME"
+
+# Detect current platform and architecture
+CURRENT_PLATFORM=$(detect_platform)
+verbose_log "Detected current platform: $CURRENT_PLATFORM"
+
+# Pull the upstream image with platform fallback
+verbose_log "Pulling upstream image: $UPSTREAM_IMAGE"
+if ! USED_PLATFORM=$(pull_image_with_fallback "$UPSTREAM_IMAGE" "$CONTAINER_RUNTIME" "$CURRENT_PLATFORM"); then
+    echo "ERROR: Failed to pull upstream image: $UPSTREAM_IMAGE" >&2
+    echo "ERROR: Tried platforms: $CURRENT_PLATFORM and linux/amd64" >&2
     exit 1
 fi
 
-# Pull the upstream image
-verbose_log "Pulling upstream image: $UPSTREAM_IMAGE"
-if ! podman pull "$UPSTREAM_IMAGE" >/dev/null 2>&1; then
-    echo "ERROR: Failed to pull upstream image: $UPSTREAM_IMAGE" >&2
-    exit 1
-fi
+log "Using platform: $USED_PLATFORM for image: $UPSTREAM_IMAGE"
 
 # Extract the catalog from the upstream image
 verbose_log "Extracting catalog from upstream image"
-if ! podman run --rm --entrypoint /bin/sh -v "$EXTRACT_DIR:/tmp/extract" "$UPSTREAM_IMAGE" -c "cp -r /configs/* /tmp/extract/" >/dev/null 2>&1; then
+if ! "$CONTAINER_RUNTIME" run --rm --platform "$USED_PLATFORM" --entrypoint /bin/sh -v "$EXTRACT_DIR:/tmp/extract" "$UPSTREAM_IMAGE" -c "cp -r /configs/* /tmp/extract/" >/dev/null 2>&1; then
     echo "ERROR: Failed to extract catalog from upstream image" >&2
     exit 1
 fi
@@ -178,9 +277,9 @@ UPSTREAM_SIZE=$(wc -l < "$UPSTREAM_CATALOG_FILE")
 log "Generated catalog lines: $GENERATED_SIZE"
 log "Upstream catalog lines: $UPSTREAM_SIZE"
 
-# Calculate checksums
-GENERATED_CHECKSUM=$(md5sum "$CATALOG_FILE" | cut -d' ' -f1)
-UPSTREAM_CHECKSUM=$(md5sum "$UPSTREAM_CATALOG_FILE" | cut -d' ' -f1)
+# Calculate checksums using cross-platform function
+GENERATED_CHECKSUM=$(calculate_sha256 "$CATALOG_FILE")
+UPSTREAM_CHECKSUM=$(calculate_sha256 "$UPSTREAM_CATALOG_FILE")
 
 log "Generated catalog checksum: $GENERATED_CHECKSUM"
 log "Upstream catalog checksum: $UPSTREAM_CHECKSUM"

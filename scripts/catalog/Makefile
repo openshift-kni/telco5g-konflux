@@ -7,6 +7,9 @@ SCRIPT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # Tool installation directory
 TOOL_DIR ?= ./bin
 
+# Container engine
+ENGINE ?= docker
+
 # Tool binaries
 YQ ?= $(TOOL_DIR)/yq
 OPM ?= $(TOOL_DIR)/opm
@@ -33,7 +36,7 @@ QUAY_BUNDLE_IMAGE ?= quay.io/redhat-user-workloads/$(QUAY_TENANT_NAME)/$(PACKAGE
 PRODUCTION_BUNDLE_IMAGE ?= registry.redhat.io/$(PRODUCTION_NAMESPACE)/$(PACKAGE_NAME_KONFLUX)-$(PRODUCTION_BUNDLE_NAME)
 
 # Tool versions for downloads
-OPENSHIFT_VERSION ?= 4.12
+OPERATOR_SDK_VERSION ?= 1.40.0
 
 # Catalog comparison configuration
 UPSTREAM_FBC_IMAGE ?= quay.io/redhat-user-workloads/$(QUAY_TENANT_NAME)/$(PACKAGE_NAME_KONFLUX)-fbc-4-20:latest
@@ -58,8 +61,8 @@ opm: ## Ensure opm is available
 .PHONY: operator-sdk
 operator-sdk: ## Ensure operator-sdk is available
 	@if [ ! -x "$(OPERATOR_SDK)" ]; then \
-		echo "Downloading operator-sdk from OpenShift mirror..."; \
-		$(MAKE) -f $(DOWNLOAD_MAKEFILE) download-operator-sdk DOWNLOAD_INSTALL_DIR=$(TOOL_DIR) DOWNLOAD_OPENSHIFT_VERSION=$(OPENSHIFT_VERSION); \
+		echo "Downloading operator-sdk from GitHub releases..."; \
+		$(MAKE) -f $(DOWNLOAD_MAKEFILE) download-operator-sdk DOWNLOAD_INSTALL_DIR=$(TOOL_DIR) DOWNLOAD_OPERATOR_SDK_VERSION=$(OPERATOR_SDK_VERSION); \
 	fi
 
 .PHONY: update-catalog-template
@@ -81,7 +84,7 @@ konflux-validate-catalog-template-bundle: yq operator-sdk ## Validate the last b
 	set -e ;\
 	bundle=$$($(YQ) ".entries[-1].image" $(CATALOG_TEMPLATE_KONFLUX)) ;\
 	echo "validating the last bundle entry: $${bundle} on catalog template: $(CATALOG_TEMPLATE_KONFLUX)" ;\
-	$(OPERATOR_SDK) bundle validate $${bundle} ;\
+	$(OPERATOR_SDK) bundle validate --image-builder=$(ENGINE) $${bundle} ;\
 	}
 
 .PHONY: konflux-validate-catalog
@@ -94,7 +97,6 @@ konflux-generate-catalog: yq opm ## Generate a quay.io catalog
 	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
 	touch $(CATALOG_KONFLUX)
 	$(OPM) alpha render-template basic --output yaml --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
-	$(OPM) validate $(dir $(CATALOG_KONFLUX))
 
 .PHONY: konflux-generate-catalog-production
 konflux-generate-catalog-production: konflux-generate-catalog ## Generate a registry.redhat.io catalog
@@ -109,7 +111,6 @@ konflux-generate-catalog-production: konflux-generate-catalog ## Generate a regi
 	fi
 	# From now on, all the related images must reference production (registry.redhat.io) exclusively
 	$(SCRIPT_DIR)/konflux-validate-related-images-production.sh --set-catalog-file $(CATALOG_KONFLUX)
-	$(OPM) validate $(dir $(CATALOG_KONFLUX))
 
 .PHONY: konflux-compare-catalog
 konflux-compare-catalog: ## Compare generated catalog with upstream FBC image
@@ -128,7 +129,7 @@ help: ## Display available targets
 	@echo "  CATALOG_FILE             Path to catalog file (default: $(CATALOG_FILE))"
 	@echo "  PACKAGE_NAME_KONFLUX     Package name for Konflux operations (default: $(PACKAGE_NAME_KONFLUX))"
 	@echo "  TOOL_DIR                 Directory for downloaded tools (default: $(TOOL_DIR))"
-	@echo "  OPENSHIFT_VERSION        OpenShift version for operator-sdk downloads (default: $(OPENSHIFT_VERSION))"
+	@echo "  OPERATOR_SDK_VERSION     Operator SDK version for downloads (default: $(OPERATOR_SDK_VERSION))"
 	@echo "  UPSTREAM_FBC_IMAGE       Upstream FBC image for comparison (default: $(UPSTREAM_FBC_IMAGE))"
 	@echo ""
 	@echo "Bundle Image Configuration:"
@@ -145,7 +146,7 @@ help: ## Display available targets
 	@echo "  make konflux-generate-catalog                             # Generate quay.io catalog"
 	@echo "  make konflux-generate-catalog-production                  # Generate registry.redhat.io catalog"
 	@echo "  make konflux-compare-catalog                              # Compare generated catalog with upstream FBC"
-	@echo "  make operator-sdk OPENSHIFT_VERSION=4.12                # Download operator-sdk for specific OpenShift version"
+	@echo "  make operator-sdk OPERATOR_SDK_VERSION=1.39.0           # Download operator-sdk for specific version"
 	@echo ""
 	@echo "Bundle Image Customization Examples:"
 	@echo "  make konflux-generate-catalog-production PACKAGE_NAME_KONFLUX=my-operator"
