@@ -6,7 +6,7 @@ set -o pipefail
 
 # set -x
 
-SCRIPT_NAME=$(basename "$(readlink -f "${BASH_SOURCE[0]}")")
+SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 
 check_preconditions() {
     echo "Checking pre-conditions..."
@@ -21,17 +21,10 @@ check_preconditions() {
 parse_args() {
     echo "Parsing args..."
 
-    # command line options
-    local options=
-    local long_options="set-catalog-template-file:,set-bundle-builds-file:,help"
-    local parsed
-    parsed=$(getopt --options="$options" --longoptions="$long_options" --name "$SCRIPT_NAME" -- "$@")
-    eval set -- "$parsed"
+    ARG_CATALOG_TEMPLATE_FILE=""
+    ARG_BUNDLE_BUILDS_FILE=""
 
-    declare -g ARG_CATALOG_TEMPLATE_FILE=""
-    declare -g ARG_BUNDLE_BUILDS_FILE=""
-
-    while true; do
+    while [[ $# -gt 0 ]]; do
         case $1 in
             --help)
                 usage
@@ -39,7 +32,7 @@ parse_args() {
                 ;;
             --set-catalog-template-file)
                 if [ -z "$2" ]; then
-                    echo "Error: --catalog-template-file requires a file " >&2;
+                    echo "Error: --set-catalog-template-file requires a file " >&2;
                     exit 1;
                 fi
 
@@ -64,10 +57,6 @@ parse_args() {
                 fi
 
                 shift 2
-                ;;
-            --)
-                shift
-                break
                 ;;
             *)
                 echo "Error: unexpected option: $1" >&2

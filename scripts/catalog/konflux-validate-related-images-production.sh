@@ -6,7 +6,7 @@ set -o pipefail
 
 # set -x
 
-SCRIPT_NAME=$(basename "$(readlink -f "${BASH_SOURCE[0]}")")
+SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 
 check_preconditions() {
     echo "Checking pre-conditions..."
@@ -21,16 +21,9 @@ check_preconditions() {
 parse_args() {
     echo "Parsing args..."
 
-    # command line options
-    local options=
-    local long_options="set-catalog-file:,help"
-    local parsed
-    parsed=$(getopt --options="$options" --longoptions="$long_options" --name "$SCRIPT_NAME" -- "$@")
-    eval set -- "$parsed"
+    ARG_CATALOG_FILE=""
 
-    declare -g ARG_CATALOG_FILE=""
-
-    while true; do
+    while [[ $# -gt 0 ]]; do
         case $1 in
             --help)
                 usage
@@ -38,7 +31,7 @@ parse_args() {
                 ;;
             --set-catalog-file)
                 if [ -z "$2" ]; then
-                    echo "Error: --catalog-file requires a file " >&2;
+                    echo "Error: --set-catalog-file requires a file " >&2;
                     exit 1;
                 fi
 
@@ -50,10 +43,6 @@ parse_args() {
 
                 shift 2
                 ;;
-            --)
-                shift
-                break
-                ;;
             *)
                 echo "Error: unexpected option: $1" >&2
                 usage
@@ -63,7 +52,7 @@ parse_args() {
     done
 
     if [ -z "$ARG_CATALOG_FILE" ]; then
-        echo "Error: --set-catalog--file is required" >&2
+        echo "Error: --set-catalog-file is required" >&2
         exit 1
     fi
 
@@ -80,8 +69,10 @@ validate_related_images() {
         exit 1
     fi
 
-    local images_parsed
-    mapfile -t images_parsed < <(yq eval -N '.relatedImages | .[] | .image' "$ARG_CATALOG_FILE")
+    local images_parsed=()
+    while IFS= read -r line; do
+        images_parsed+=("$line")
+    done < <(yq eval -N '.relatedImages | .[] | .image' "$ARG_CATALOG_FILE")
     entries=${#images_parsed[@]}
 
     declare -i i=0

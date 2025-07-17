@@ -14,7 +14,7 @@ The `telco5g-konflux` project provides:
 
 1. **Add the submodule to your repository:**
    ```bash
-   git submodule add https://github.com/openshift-kni/telco5g-konflux.git scripts
+   git submodule add https://github.com/openshift-kni/telco5g-konflux.git telco5g-konflux
    git submodule update --init --recursive
    ```
 

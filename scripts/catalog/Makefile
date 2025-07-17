@@ -35,6 +35,9 @@ PRODUCTION_BUNDLE_IMAGE ?= registry.redhat.io/$(PRODUCTION_NAMESPACE)/$(PACKAGE_
 # Tool versions for downloads
 OPENSHIFT_VERSION ?= 4.12
 
+# Catalog comparison configuration
+UPSTREAM_FBC_IMAGE ?= quay.io/redhat-user-workloads/$(QUAY_TENANT_NAME)/$(PACKAGE_NAME_KONFLUX)-fbc-4-20:latest
+
 # Download Makefile location
 DOWNLOAD_MAKEFILE := $(SCRIPT_DIR)/../download/Makefile
 
@@ -83,15 +86,15 @@ konflux-validate-catalog-template-bundle: yq operator-sdk ## Validate the last b
 
 .PHONY: konflux-validate-catalog
 konflux-validate-catalog: opm ## Validate the current catalog file
-	@echo "validating catalog: .konflux/catalog/$(PACKAGE_NAME_KONFLUX)"
-	$(OPM) validate .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/
+	@echo "validating catalog: $(dir $(CATALOG_KONFLUX))"
+	$(OPM) validate $(dir $(CATALOG_KONFLUX))
 
 .PHONY: konflux-generate-catalog
 konflux-generate-catalog: yq opm ## Generate a quay.io catalog
-	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
+	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
 	touch $(CATALOG_KONFLUX)
 	$(OPM) alpha render-template basic --output yaml --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
-	$(OPM) validate .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/
+	$(OPM) validate $(dir $(CATALOG_KONFLUX))
 
 .PHONY: konflux-generate-catalog-production
 konflux-generate-catalog-production: konflux-generate-catalog ## Generate a registry.redhat.io catalog
@@ -99,10 +102,18 @@ konflux-generate-catalog-production: konflux-generate-catalog ## Generate a regi
 	@echo "  From: $(QUAY_BUNDLE_IMAGE)"
 	@echo "  To: $(PRODUCTION_BUNDLE_IMAGE)"
 	# overlay the bundle image for production
-	sed -i 's|$(QUAY_BUNDLE_IMAGE)|$(PRODUCTION_BUNDLE_IMAGE)|g' $(CATALOG_KONFLUX)
+	if [ "$$(uname)" = "Darwin" ]; then \
+		sed -i '' 's|$(QUAY_BUNDLE_IMAGE)\(@sha256:[a-f0-9]*\)|$(PRODUCTION_BUNDLE_IMAGE)\1|g' $(CATALOG_KONFLUX); \
+	else \
+		sed -i 's|$(QUAY_BUNDLE_IMAGE)\(@sha256:[a-f0-9]*\)|$(PRODUCTION_BUNDLE_IMAGE)\1|g' $(CATALOG_KONFLUX); \
+	fi
 	# From now on, all the related images must reference production (registry.redhat.io) exclusively
 	$(SCRIPT_DIR)/konflux-validate-related-images-production.sh --set-catalog-file $(CATALOG_KONFLUX)
-	$(OPM) validate .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/
+	$(OPM) validate $(dir $(CATALOG_KONFLUX))
+
+.PHONY: konflux-compare-catalog
+konflux-compare-catalog: ## Compare generated catalog with upstream FBC image
+	$(SCRIPT_DIR)/konflux-compare-catalog.sh --catalog-path $(CATALOG_KONFLUX) --upstream-image $(UPSTREAM_FBC_IMAGE)
 
 .PHONY: help
 help: ## Display available targets
@@ -118,6 +129,7 @@ help: ## Display available targets
 	@echo "  PACKAGE_NAME_KONFLUX     Package name for Konflux operations (default: $(PACKAGE_NAME_KONFLUX))"
 	@echo "  TOOL_DIR                 Directory for downloaded tools (default: $(TOOL_DIR))"
 	@echo "  OPENSHIFT_VERSION        OpenShift version for operator-sdk downloads (default: $(OPENSHIFT_VERSION))"
+	@echo "  UPSTREAM_FBC_IMAGE       Upstream FBC image for comparison (default: $(UPSTREAM_FBC_IMAGE))"
 	@echo ""
 	@echo "Bundle Image Configuration:"
 	@echo "  QUAY_TENANT_NAME         Quay tenant name (default: $(QUAY_TENANT_NAME))"
@@ -132,6 +144,7 @@ help: ## Display available targets
 	@echo "  make validate-production-images CATALOG_FILE=my-catalog.yaml  # Use custom catalog"
 	@echo "  make konflux-generate-catalog                             # Generate quay.io catalog"
 	@echo "  make konflux-generate-catalog-production                  # Generate registry.redhat.io catalog"
+	@echo "  make konflux-compare-catalog                              # Compare generated catalog with upstream FBC"
 	@echo "  make operator-sdk OPENSHIFT_VERSION=4.12                # Download operator-sdk for specific OpenShift version"
 	@echo ""
 	@echo "Bundle Image Customization Examples:"
