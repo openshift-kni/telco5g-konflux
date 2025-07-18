@@ -22,7 +22,7 @@ SHELL = /usr/bin/env bash -o pipefail
 
 # The 'all' target is the default goal.
 all: lint
-	@echo "All linting tasks completed successfully."
+	@echo "All linting and testing tasks completed successfully."
 
 .PHONY: venv
 venv: $(TELCO5G_KONFLUX_VENV)

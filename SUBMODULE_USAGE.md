@@ -118,11 +118,10 @@ make -f scripts/catalog/Makefile konflux-generate-catalog-production
 
 #### Custom Versions
 ```bash
-./scripts/download/download-yq.sh v4.44.2         # Install specific yq version
-./scripts/download/download-opm.sh v1.51.0        # Install specific opm version
-./scripts/download/download-jq.sh 1.6.0           # Install specific jq version
-./scripts/download/download-operator-sdk.sh 4.13  # Install operator-sdk for OpenShift 4.13 (latest)
-./scripts/download/download-operator-sdk.sh 4.12.76 # Install operator-sdk for specific OpenShift version
+./scripts/download/download-yq.sh v4.44.2            # Install specific yq version
+./scripts/download/download-opm.sh v1.51.0           # Install specific opm version
+./scripts/download/download-jq.sh 1.6                # Install specific jq version
+./scripts/download/download-operator-sdk.sh v1.38.0  # Install operator-sdk for OpenShift 4.13 (latest)
 ```
 
 #### Custom Install Directory
@@ -130,12 +129,12 @@ make -f scripts/catalog/Makefile konflux-generate-catalog-production
 # Using command line option
 ./scripts/download/download-yq.sh -d /usr/local/bin v4.44.2
 ./scripts/download/download-opm.sh --install-dir /opt/tools v1.51.0
-./scripts/download/download-operator-sdk.sh -d /opt/tools 4.13
+./scripts/download/download-operator-sdk.sh -d /opt/tools v1.38.0
 
 # Using environment variable
 INSTALL_DIR=/opt/bin ./scripts/download/download-yq.sh v4.44.2
 INSTALL_DIR=/usr/local/bin ./scripts/download/download-opm.sh
-INSTALL_DIR=/opt/tools ./scripts/download/download-operator-sdk.sh 4.12
+INSTALL_DIR=/opt/tools ./scripts/download/download-operator-sdk.sh v1.38.0
 ```
 
 #### Help Information
@@ -144,22 +143,6 @@ INSTALL_DIR=/opt/tools ./scripts/download/download-operator-sdk.sh 4.12
 ./scripts/download/download-opm.sh --help          # Show detailed usage information
 ./scripts/download/download-jq.sh --help           # Show detailed usage information
 ./scripts/download/download-operator-sdk.sh --help # Show detailed usage information
-```
-
-### Operator SDK Version Discovery
-
-The operator-sdk download script supports intelligent version discovery:
-
-```bash
-# Major.Minor format - automatically finds latest patch release
-./scripts/download/download-operator-sdk.sh 4.12    # Finds latest 4.12.x (e.g., 4.12.76)
-./scripts/download/download-operator-sdk.sh 4.13    # Finds latest 4.13.x (e.g., 4.13.58)
-
-# Full version format - uses exact version
-./scripts/download/download-operator-sdk.sh 4.12.76 # Uses exactly 4.12.76
-
-# The script automatically determines the correct operator-sdk version
-# based on the OpenShift version from the OpenShift mirror
 ```
 
 ## Catalog Management
