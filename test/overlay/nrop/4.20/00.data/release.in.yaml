@@ -1,0 +1,56 @@
+---
+variables:
+  annotations: |
+    features.operators.openshift.io/disconnected: "true"
+    features.operators.openshift.io/fips-compliant: "true"
+    features.operators.openshift.io/proxy-aware: "false"
+    features.operators.openshift.io/csi: "false"
+    features.operators.openshift.io/cni: "false"
+    features.operators.openshift.io/cnf: "true"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "false"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
+  alm_examples: |
+   [
+    {
+      "apiVersion": "nodetopology.openshift.io/v1alpha1",
+      "kind": "NUMAResourcesOperator",
+      "metadata": {
+        "name": "numaresourcesoperator"
+      },
+      "spec": {
+        "nodeGroups": [
+          {
+            "machineConfigPoolSelector": {
+              "matchLabels": {
+                "pools.operator.machineconfiguration.openshift.io/worker": ""
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "nodetopology.openshift.io/v1alpha1",
+      "kind": "NUMAResourcesScheduler",
+      "metadata": {
+        "name": "numaresourcesscheduler"
+      },
+      "spec": {
+        "imageSpec": "URL_OF_SCHEDULER_IMAGE_FROM_REDHAT_REGISTRY",
+        "logLevel": "Normal",
+        "schedulerName": "topo-aware-scheduler"
+      }
+    }
+   ]
+  display_name: "numaresources-operator"
+  manager_version: "numaresources-operator.v4.20.0"
+  subscription_badges: |
+   [
+     "OpenShift Kubernetes Engine",
+     "OpenShift Container Platform",
+     "OpenShift Platform Plus"
+   ]
+  version: "4.20.0"
+

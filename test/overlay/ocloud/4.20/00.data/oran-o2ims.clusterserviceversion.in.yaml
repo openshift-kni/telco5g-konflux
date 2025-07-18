@@ -1,0 +1,2027 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  annotations:
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "clcm.openshift.io/v1alpha1",
+          "kind": "ClusterTemplate",
+          "metadata": {
+            "name": "clustertemplate-sample.v1.0.0",
+            "namespace": "clustertemplate-a-v4-16-3"
+          },
+          "spec": {
+            "characteristics": {
+              "age": "31"
+            },
+            "description": "nice description",
+            "metadata": {
+              "apple": "23"
+            },
+            "name": "clustertemplate-a",
+            "release": "4.16.3",
+            "templateParameterSchema": {
+              "properties": {
+                "clusterInstanceParameters": {
+                  "description": "clusterInstanceParameters defines the available parameters for cluster installation",
+                  "properties": {
+                    "additionalNTPSources": {
+                      "description": "AdditionalNTPSources is a list of NTP sources (hostname or IP) to be added to all cluster hosts. They are added to any NTP sources that were configured through other means.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": "array"
+                    },
+                    "apiVIPs": {
+                      "description": "APIVIPs are the virtual IPs used to reach the OpenShift cluster's API. Enter one IP address for single-stack clusters, or up to two for dual-stack clusters (at most one IP address per IP stack used). The order of stacks should be the same as order of subnets in Cluster Networks, Service Networks, and Machine Networks.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 2,
+                      "type": "array"
+                    },
+                    "baseDomain": {
+                      "description": "BaseDomain is the base domain to use for the deployed cluster.",
+                      "type": "string"
+                    },
+                    "clusterName": {
+                      "description": "ClusterName is the name of the cluster.",
+                      "type": "string"
+                    },
+                    "extraAnnotations": {
+                      "additionalProperties": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      "description": "Additional cluster-wide annotations to be applied to the rendered templates",
+                      "type": "object"
+                    },
+                    "extraLabels": {
+                      "additionalProperties": {
+                        "additionalProperties": {
+                          "type": "string"
+                        },
+                        "type": "object"
+                      },
+                      "description": "Additional cluster-wide labels to be applied to the rendered templates",
+                      "type": "object"
+                    },
+                    "ingressVIPs": {
+                      "description": "IngressVIPs are the virtual IPs used for cluster ingress traffic. Enter one IP address for single-stack clusters, or up to two for dual-stack clusters (at most one IP address per IP stack used). The order of stacks should be the same as order of subnets in Cluster Networks, Service Networks, and Machine Networks.",
+                      "items": {
+                        "type": "string"
+                      },
+                      "maxItems": 2,
+                      "type": "array"
+                    },
+                    "machineNetwork": {
+                      "description": "MachineNetwork is the list of IP address pools for machines.",
+                      "items": {
+                        "description": "MachineNetworkEntry is a single IP address block for node IP blocks.",
+                        "properties": {
+                          "cidr": {
+                            "description": "CIDR is the IP block address pool for machines within the cluster.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "cidr"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "nodes": {
+                      "items": {
+                        "description": "NodeSpec",
+                        "properties": {
+                          "extraAnnotations": {
+                            "additionalProperties": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "description": "Additional node-level annotations to be applied to the rendered templates",
+                            "type": "object"
+                          },
+                          "extraLabels": {
+                            "additionalProperties": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "description": "Additional node-level labels to be applied to the rendered templates",
+                            "type": "object"
+                          },
+                          "hostName": {
+                            "description": "Hostname is the desired hostname for the host",
+                            "type": "string"
+                          },
+                          "nodeLabels": {
+                            "additionalProperties": {
+                              "type": "string"
+                            },
+                            "description": "NodeLabels allows the specification of custom roles for your nodes in your managed clusters. These are additional roles are not used by any OpenShift Container Platform components, only by the user. When you add a custom role, it can be associated with a custom machine config pool that references a specific configuration for that role. Adding custom labels or roles during installation makes the deployment process more effective and prevents the need for additional reboots after the installation is complete.",
+                            "type": "object"
+                          },
+                          "nodeNetwork": {
+                            "description": "NodeNetwork is a set of configurations pertaining to the network settings for the node.",
+                            "properties": {
+                              "config": {
+                                "description": "yaml that can be processed by nmstate, using custom marshaling/unmarshaling that will allow to populate nmstate config as plain yaml.",
+                                "type": "object",
+                                "x-kubernetes-preserve-unknown-fields": true
+                              }
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "hostName"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "serviceNetwork": {
+                      "description": "ServiceNetwork is the list of IP address pools for services.",
+                      "items": {
+                        "description": "ServiceNetworkEntry is a single IP address block for node IP blocks.",
+                        "properties": {
+                          "cidr": {
+                            "description": "CIDR is the IP block address pool for machines within the cluster.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "cidr"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "sshPublicKey": {
+                      "description": "SSHPublicKey is the public Secure Shell (SSH) key to provide access to instances. This key will be added to the host to allow ssh access",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "clusterName",
+                    "nodes"
+                  ],
+                  "type": "object"
+                },
+                "nodeClusterName": {
+                  "type": "string"
+                },
+                "oCloudSiteId": {
+                  "type": "string"
+                },
+                "policyTemplateParameters": {
+                  "description": "policyTemplateParameters defines the available parameters for cluster configuration",
+                  "properties": {
+                    "cpu-isolated": {
+                      "type": "string"
+                    },
+                    "cpu-reserved": {
+                      "type": "string"
+                    },
+                    "hugepages-count": {
+                      "type": "string"
+                    },
+                    "hugepages-default": {
+                      "type": "string"
+                    },
+                    "hugepages-size": {
+                      "type": "string"
+                    },
+                    "install-plan-approval": {
+                      "type": "string"
+                    },
+                    "sriov-network-pfNames-1": {
+                      "type": "string"
+                    },
+                    "sriov-network-pfNames-2": {
+                      "type": "string"
+                    },
+                    "sriov-network-vlan-1": {
+                      "type": "string"
+                    },
+                    "sriov-network-vlan-2": {
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "required": [
+                "nodeClusterName",
+                "oCloudSiteId",
+                "policyTemplateParameters",
+                "clusterInstanceParameters"
+              ],
+              "type": "object"
+            },
+            "templates": {
+              "clusterInstanceDefaults": "clustertemplate-sample.v1.0.0-clusterinstance-defaults",
+              "hwTemplate": "sample-hwtemplate-v1",
+              "policyTemplateDefaults": "clustertemplate-sample.v1.0.0-policytemplate-defaults",
+              "upgradeDefaults": "upgrade-defaults-v1"
+            },
+            "version": "v1.0.0"
+          },
+          "status": {
+            "conditions": []
+          }
+        },
+        {
+          "apiVersion": "clcm.openshift.io/v1alpha1",
+          "kind": "HardwarePlugin",
+          "metadata": {
+            "name": "metal3-hwplugin",
+            "namespace": "oran-o2ims"
+          },
+          "spec": {
+            "apiRoot": "https://metal3-hardwareplugin-server.oran-o2ims.svc.cluster.local:8443",
+            "authClientConfig": {
+              "type": "ServiceAccount"
+            }
+          },
+          "status": {
+            "conditions": []
+          }
+        },
+        {
+          "apiVersion": "clcm.openshift.io/v1alpha1",
+          "kind": "HardwareProfile",
+          "metadata": {
+            "name": "hardwareprofile-sample",
+            "namespace": "oran-o2ims"
+          },
+          "spec": {
+            "bios": {
+              "attributes": {
+                "SriovGlobalEnable": "Enabled",
+                "SysProfile": "Custom",
+                "WorkloadProfile": "TelcoOptimizedProfile"
+              }
+            }
+          },
+          "status": {
+            "conditions": []
+          }
+        },
+        {
+          "apiVersion": "clcm.openshift.io/v1alpha1",
+          "kind": "HardwareTemplate",
+          "metadata": {
+            "name": "r740-blue-basic",
+            "namespace": "oran-o2ims"
+          },
+          "spec": {
+            "bootInterfaceLabel": "bootable-interface",
+            "hardwarePluginRef": "metal3-hwplugin",
+            "hardwareProvisioningTimeout": "60m",
+            "nodeGroupData": [
+              {
+                "hwProfile": "rh-profile-r740-bios-settings",
+                "name": "controller",
+                "resourceSelector": {
+                  "resourceselector.clcm.openshift.io/server-colour": "blue",
+                  "server-type": "R740"
+                },
+                "role": "master"
+              }
+            ]
+          }
+        },
+        {
+          "apiVersion": "clcm.openshift.io/v1alpha1",
+          "kind": "ProvisioningRequest",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/created-by": "oran-o2ims",
+              "app.kubernetes.io/instance": "provisioningrequest-sample",
+              "app.kubernetes.io/managed-by": "kustomize",
+              "app.kubernetes.io/name": "provisioningrequest",
+              "app.kubernetes.io/part-of": "oran-o2ims"
+            },
+            "name": "123e4567-e89b-12d3-a456-426614174000"
+          },
+          "spec": {
+            "description": "Provisioning request for setting up a Single Node OpenShift (SNO) in the test environment.",
+            "name": "TestEnv-SNO-Provisioning-site-sno-du-1",
+            "templateName": "clustertemplate-sample",
+            "templateParameters": {
+              "clusterInstanceParameters": {
+                "additionalNTPSources": [
+                  "NTP.server1",
+                  "1.1.1.1"
+                ],
+                "apiVIPs": [
+                  "192.0.2.2"
+                ],
+                "baseDomain": "example.com",
+                "clusterName": "site-sno-du-1",
+                "extraAnnotations": {
+                  "AgentClusterInstall": {
+                    "extra-annotation-key": "extra-annotation-value"
+                  }
+                },
+                "extraLabels": {
+                  "AgentClusterInstall": {
+                    "extra-label-key": "extra-label-value"
+                  },
+                  "ManagedCluster": {
+                    "cluster-version": "v4.16",
+                    "clustertemplate-a-policy": "v1"
+                  }
+                },
+                "ingressVIPs": [
+                  "192.0.2.3"
+                ],
+                "machineNetwork": [
+                  {
+                    "cidr": "192.0.2.0/24"
+                  }
+                ],
+                "nodes": [
+                  {
+                    "bootMode": "UEFI",
+                    "extraAnnotations": {
+                      "BareMetalHost": {
+                        "extra-annotation-key": "extra-annotation-value"
+                      }
+                    },
+                    "extraLabels": {
+                      "BareMetalHost": {
+                        "extra-label-key": "extra-label-value"
+                      }
+                    },
+                    "hostName": "node1.baseDomain.com",
+                    "nodeLabels": {
+                      "node-role.kubernetes.io/infra": "",
+                      "node-role.kubernetes.io/master": ""
+                    },
+                    "nodeNetwork": {
+                      "config": {
+                        "dns-resolver": {
+                          "config": {
+                            "server": [
+                              "192.0.2.22"
+                            ]
+                          }
+                        },
+                        "interfaces": [
+                          {
+                            "ipv4": {
+                              "address": [
+                                {
+                                  "ip": "192.0.2.10",
+                                  "prefix-length": 24
+                                },
+                                {
+                                  "ip": "192.0.2.11",
+                                  "prefix-length": 24
+                                },
+                                {
+                                  "ip": "192.0.2.12",
+                                  "prefix-length": 24
+                                }
+                              ],
+                              "dhcp": false,
+                              "enabled": true
+                            },
+                            "ipv6": {
+                              "address": [
+                                {
+                                  "ip": "2620:52:0:10e7:e42:a1ff:fe8a:601",
+                                  "prefix-length": 64
+                                },
+                                {
+                                  "ip": "2620:52:0:10e7:e42:a1ff:fe8a:602",
+                                  "prefix-length": 64
+                                },
+                                {
+                                  "ip": "2620:52:0:10e7:e42:a1ff:fe8a:603",
+                                  "prefix-length": 64
+                                }
+                              ],
+                              "dhcp": false,
+                              "enabled": true
+                            },
+                            "name": "eno1",
+                            "type": "ethernet"
+                          },
+                          {
+                            "ipv6": {
+                              "address": [
+                                {
+                                  "ip": "2620:52:0:1302::100"
+                                }
+                              ],
+                              "enabled": true,
+                              "link-aggregation": {
+                                "mode": "balance-rr",
+                                "options": {
+                                  "miimon": "140"
+                                },
+                                "slaves": [
+                                  "eth0",
+                                  "eth1"
+                                ]
+                              },
+                              "prefix-length": 64
+                            },
+                            "name": "bond99",
+                            "state": "up",
+                            "type": "bond"
+                          }
+                        ],
+                        "routes": {
+                          "config": [
+                            {
+                              "destination": "0.0.0.0/0",
+                              "next-hop-address": "192.0.2.254",
+                              "next-hop-interface": "eno1",
+                              "table-id": 254
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                ],
+                "serviceNetwork": [
+                  {
+                    "cidr": "233.252.0.0/24"
+                  }
+                ],
+                "sshPublicKey": "ssh-rsa"
+              },
+              "nodeClusterName": "site-sno-du-1",
+              "oCloudSiteId": "local-west-12345",
+              "policyTemplateParameters": {
+                "sriov-network-vlan-1": "114",
+                "sriov-network-vlan-2": "111"
+              }
+            },
+            "templateVersion": "v1.0.0"
+          },
+          "status": {
+            "conditions": []
+          }
+        },
+        {
+          "apiVersion": "ocloud.openshift.io/v1alpha1",
+          "kind": "Inventory",
+          "metadata": {
+            "labels": {
+              "app.kubernetes.io/created-by": "oran-o2ims",
+              "app.kubernetes.io/instance": "inventory-sample",
+              "app.kubernetes.io/managed-by": "kustomize",
+              "app.kubernetes.io/name": "inventory",
+              "app.kubernetes.io/part-of": "oran-o2ims"
+            },
+            "name": "default",
+            "namespace": "oran-o2ims"
+          },
+          "spec": {
+            "caBundleName": "o2ims-custom-ca-certs",
+            "cloudID": "b7dcb3ff-583d-42d9-abb5-f484386fc688",
+            "ingress": {
+              "tls": {
+                "secretName": "oran-o2ims-tls-certificate"
+              }
+            },
+            "smo": {
+              "oauth": {
+                "clientSecretName": "oauth-client-secrets",
+                "groupsClaim": "roles",
+                "scopes": [
+                  "openid",
+                  "profile",
+                  "role:ocloud-manager"
+                ],
+                "tokenEndpoint": "/protocol/openid-connect/token",
+                "url": "https://oauth.example.com:8443/realms/oran",
+                "usernameClaim": "preferred_username"
+              },
+              "registrationEndpoint": "/smo/v1/registration",
+              "tls": {
+                "secretName": "oran-o2ims-tls-certificate"
+              },
+              "url": "https://smo.example.com"
+            }
+          },
+          "status": {
+            "conditions": []
+          }
+        },
+        {
+          "apiVersion": "plugins.clcm.openshift.io/v1alpha1",
+          "kind": "AllocatedNode",
+          "metadata": {
+            "name": "91c70863-8a83-422a-ab7a-a75f744d5210",
+            "namespace": "oran-o2ims"
+          },
+          "spec": {
+            "groupName": "controller",
+            "hardwarePluginRef": "metal3-hwplugin",
+            "hwMgrNodeId": "r740xserver1",
+            "hwMgrNodeNs": "r740-pool",
+            "hwProfile": "rh-profile-r740-bios-settings",
+            "nodeAllocationRequest": "metal3-b12f3e77848a4002bf40"
+          },
+          "status": {
+            "bmc": {
+              "address": "idrac-virtualmedia+https://127.0.0.1/redfish/v1/Systems/System.Embedded.1",
+              "credentialsName": "bmc-secret-r740xserver1"
+            },
+            "conditions": [
+              {
+                "lastTransitionTime": "2025-07-16T12:57:12Z",
+                "message": "Provisioned",
+                "reason": "Completed",
+                "status": "True",
+                "type": "Provisioned"
+              }
+            ],
+            "hwProfile": "rh-profile-r740-bios-settings",
+            "interfaces": [
+              {
+                "label": "",
+                "macAddress": "c3:f7:f5:b2:4d:19",
+                "name": "ens1f0"
+              },
+              {
+                "label": "",
+                "macAddress": "c3:f7:f5:b2:4d:1a",
+                "name": "ens3f1np1"
+              },
+              {
+                "label": "bootable-interface",
+                "macAddress": "c3:f7:f5:b2:4d:1b",
+                "name": "eno1np0"
+              },
+              {
+                "label": "",
+                "macAddress": "c3:f7:f5:b2:4d:1c",
+                "name": "ens5f3"
+              },
+              {
+                "label": "",
+                "macAddress": "c3:f7:f5:b2:4d:1d",
+                "name": "ens5f1"
+              },
+              {
+                "label": "data-interface",
+                "macAddress": "c3:f7:f5:b2:4d:1e",
+                "name": "eno2np1"
+              },
+              {
+                "label": "",
+                "macAddress": "c3:f7:f5:b2:4d:1f",
+                "name": "ens7f0np0"
+              },
+              {
+                "label": "",
+                "macAddress": "c3:f7:f5:b2:4d:20",
+                "name": "ens7f1np1"
+              },
+              {
+                "label": "",
+                "macAddress": "c3:f7:f5:b2:4d:21",
+                "name": "ens1f1"
+              },
+              {
+                "label": "",
+                "macAddress": "c3:f7:f5:b2:4d:22",
+                "name": "ens5f2"
+              },
+              {
+                "label": "",
+                "macAddress": "c3:f7:f5:b2:4d:23",
+                "name": "ens5f0"
+              },
+              {
+                "label": "",
+                "macAddress": "c3:f7:f5:b2:4d:24",
+                "name": "ens3f0np0"
+              }
+            ]
+          }
+        },
+        {
+          "apiVersion": "plugins.clcm.openshift.io/v1alpha1",
+          "kind": "NodeAllocationRequest",
+          "metadata": {
+            "name": "metal3-b12f3e77848a4002bf40",
+            "namespace": "oran-o2ims"
+          },
+          "spec": {
+            "bootInterfaceLabel": "bootable-interface",
+            "clusterId": "cluster1",
+            "configTransactionId": 1,
+            "hardwarePluginRef": "metal3-hwplugin",
+            "nodeGroup": [
+              {
+                "nodeGroupData": {
+                  "hwProfile": "rh-profile-r740-bios-settings",
+                  "name": "controller",
+                  "resourceSelector": {
+                    "resourceselector.clcm.openshift.io/server-colour": "blue",
+                    "server-type": "R740"
+                  },
+                  "role": "master"
+                },
+                "size": 1
+              }
+            ],
+            "site": "ottawa"
+          },
+          "status": {
+            "conditions": [
+              {
+                "lastTransitionTime": "2025-07-16T12:57:12Z",
+                "message": "Created",
+                "reason": "Completed",
+                "status": "True",
+                "type": "Provisioned"
+              }
+            ],
+            "hwMgrPlugin": {
+              "observedGeneration": 1
+            },
+            "observedConfigTransactionId": 0,
+            "properties": {
+              "nodeNames": [
+                "91c70863-8a83-422a-ab7a-a75f744d5210"
+              ]
+            }
+          }
+        }
+      ]
+    capabilities: Basic Install
+    containerImage: quay.io/openshift-kni/oran-o2ims-operator
+    description: The O-Cloud Manager operator provides an implementation of the O-RAN
+      O2 IMS API on top of OpenShift and ACM.
+    features.operators.openshift.io/cnf: "false"
+    features.operators.openshift.io/cni: "false"
+    features.operators.openshift.io/csi: "false"
+    features.operators.openshift.io/disconnected: "true"
+    features.operators.openshift.io/fips-compliant: "true"
+    features.operators.openshift.io/proxy-aware: "false"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "false"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
+    olm.skipRange: '>=4.16.0 <4.18'
+    operators.openshift.io/infrastructure-features: '["disconnected"]'
+    operators.openshift.io/valid-subscription: '["OpenShift Container Platform", "OpenShift
+      Platform Plus"]'
+    operators.operatorframework.io/builder: operator-sdk-v1.36.1
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
+    provider: Red Hat
+    repository: https://github.com/openshift-kni/oran-o2ims
+    support: Red Hat
+  labels:
+    operatorframework.io/arch.amd64: supported
+  name: oran-o2ims.v4.18.0
+  namespace: placeholder
+spec:
+  apiservicedefinitions: {}
+  customresourcedefinitions:
+    owned:
+    - description: AllocatedNode is the schema for an allocated node
+      displayName: Allocated Node
+      kind: AllocatedNode
+      name: allocatednodes.plugins.clcm.openshift.io
+      resources:
+      - kind: Namespace
+        name: ""
+        version: v1
+      specDescriptors:
+      - displayName: Extensions
+        path: extensions
+      - description: GroupName
+        displayName: Group Name
+        path: groupName
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: HardwarePluginRef is the identifier for the HardwarePlugin instance.
+        displayName: Hardware Plugin Reference
+        path: hardwarePluginRef
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: HwMgrNodeId is the node identifier from the hardware manager.
+        displayName: Hardware Manager Node ID
+        path: hwMgrNodeId
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: HwMgrNodeNs is the node namespace from the hardware manager.
+        displayName: Hardware Manager Node Namespace
+        path: hwMgrNodeNs
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: HwProfile
+        displayName: Hardware Profile
+        path: hwProfile
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: NodeAllocationRequest
+        displayName: Node Allocation Request
+        path: nodeAllocationRequest
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - displayName: BMC
+        path: bmc
+      - description: |-
+          Conditions represent the observations of the AllocatedNodeStatus's current state.
+          Possible values of the condition type are `Provisioned`, `Unprovisioned`, `Updating` and `Failed`.
+        displayName: Conditions
+        path: conditions
+      - displayName: Hostname
+        path: hostname
+      - displayName: Hw Profile
+        path: hwProfile
+      - displayName: Interfaces
+        path: interfaces
+      version: v1alpha1
+    - description: ClusterTemplate is the Schema for the clustertemplates API
+      displayName: Cluster Template
+      kind: ClusterTemplate
+      name: clustertemplates.clcm.openshift.io
+      resources:
+      - kind: ConfigMap
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: Characteristics defines a List of key/value pairs describing
+          characteristics associated with the template.
+        displayName: Characteristics
+        path: characteristics
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Description defines a Human readable description of the Template.
+        displayName: Description
+        path: description
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Metadata defines a List of key/value pairs describing metadata
+          associated with the template.
+        displayName: Metadata
+        path: metadata
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Name defines a Human readable name of the Template.
+        displayName: Name
+        path: name
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Release defines the openshift release version of the template
+        displayName: Release
+        path: release
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: TemplateId defines a Identifier for the O-Cloud Template. This
+          identifier is allocated by the O-Cloud.
+        displayName: TemplateId
+        path: templateId
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          TemplateParameterSchema defines the parameters required for ClusterTemplate.
+          The parameter definitions should follow the OpenAPI V3 schema and
+          explicitly define required fields.
+        displayName: Template Parameter Schema
+        path: templateParameterSchema
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Templates defines the references to the templates required for
+          ClusterTemplate.
+        displayName: Templates
+        path: templates
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Version defines a version or generation of the resource as defined
+          by its provider.
+        displayName: Version
+        path: version
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - displayName: Conditions
+        path: conditions
+      version: v1alpha1
+    - description: HardwarePlugin is the Schema for the hardwareplugins API
+      displayName: Hardware Plugin
+      kind: HardwarePlugin
+      name: hardwareplugins.clcm.openshift.io
+      resources:
+      - kind: Namespace
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: ApiRoot is the root URL for the Hardware Plugin.
+        displayName: Hardware Plugin API root
+        path: apiRoot
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: AuthClientConfig defines the configurable client attributes required
+          to access the OAuth2 authorization server
+        displayName: SMO OAuth Configuration
+        path: authClientConfig
+      - description: |-
+          BasicAuthSecret represents the name of a secret (in the current namespace) containing the username
+          and password for Basic authentication. The secret is expected to contain 'username' and 'password' keys.
+          This field is required when Type is set to "Basic".
+        displayName: Basic Auth Secret
+        path: authClientConfig.basicAuthSecret
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          OAuthConfig holds the configuration for OAuth2-based authentication, including the authorization server
+          URL, token endpoint, and client credentials. This field is required when Type is set to "OAuth".
+        displayName: OAuth Configuration
+        path: authClientConfig.oauthConfig
+      - description: |-
+          TLSConfig specifies the TLS configuration for secure communication, including the certificate and private
+          key. This field is optional and can be used with any authentication type to enable TLS for the connection.
+        displayName: TLS Configuration
+        path: authClientConfig.tlsConfig
+      - description: Type specifies the authentication type to be used (e.g., ServiceAccount,
+          Basic, or OAuth).
+        displayName: Authentication Type
+        path: authClientConfig.type
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:select:ServiceAccount
+        - urn:alm:descriptor:com.tectonic.ui:select:Basic
+        - urn:alm:descriptor:com.tectonic.ui:select:OAuth
+      - description: |-
+          CaBundleName references a config map that contains a set of custom CA certificates to be used when communicating
+          with any outside HardwarePlugin server that has its TLS certificate signed by a non-public CA certificate.
+          The config map is expected to contain a single file called 'ca-bundle.crt' containing all trusted CA certificates
+          in PEM format.
+        displayName: Custom CA Certificates
+        path: caBundleName
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - description: Conditions describe the state of the UpdateService resource.
+        displayName: Conditions
+        path: conditions
+      - displayName: Observed Generation
+        path: observedGeneration
+      version: v1alpha1
+    - description: HardwareProfile is the Schema for the hardwareprofiles API
+      displayName: Hardware Profile
+      kind: HardwareProfile
+      name: hardwareprofiles.clcm.openshift.io
+      resources:
+      - kind: Service
+        name: policy-engine-service
+        version: v1
+      specDescriptors:
+      - description: Bios defines a set of bios attributes
+        displayName: Bios
+        path: bios
+      - displayName: Attributes
+        path: bios.attributes
+      - description: BIOS firmware information
+        displayName: BIOS Firmware
+        path: biosFirmware
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: BMC firmware information
+        displayName: BMC Firmware
+        path: bmcFirmware
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - description: Represents the observations of a HardwareProfile's current state
+        displayName: Conditions
+        path: conditions
+      - displayName: Observed Generation
+        path: observedGeneration
+      version: v1alpha1
+    - description: HardwareTemplate is the Schema for the hardwaretemplates API
+      displayName: Hardware Template
+      kind: HardwareTemplate
+      name: hardwaretemplates.clcm.openshift.io
+      resources:
+      - kind: ConfigMap
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: BootInterfaceLabel is the label of the boot interface.
+        displayName: Boot Interface Label
+        path: bootInterfaceLabel
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: HardwarePluginRef is the name of the HardwarePlugin.
+        displayName: Hardware Plugin Reference
+        path: hardwarePluginRef
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: HardwareProvisioningTimeout defines the timeout duration string
+          for the hardware provisioning.
+        displayName: Hardware Provisioning Timeout
+        path: hardwareProvisioningTimeout
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: NodeGroupData defines a collection of NodeGroupData items
+        displayName: Node Group Data
+        path: nodeGroupData
+      statusDescriptors:
+      - displayName: Conditions
+        path: conditions
+      version: v1alpha1
+    - description: Inventory is the Schema for the Inventory API
+      displayName: O-Cloud Manager Inventory
+      kind: Inventory
+      name: inventories.ocloud.openshift.io
+      resources:
+      - kind: Deployment
+        name: ""
+        version: apps/v1
+      specDescriptors:
+      - description: AlarmServerConfig contains the configuration for the alarm server.
+        displayName: Alarm Server Configuration
+        path: alarmServerConfig
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: ArtifactsServerConfig contains the configuration for the artifacts
+          server.
+        displayName: Artifacts Server Configuration
+        path: artifactsServerConfig
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          CaBundleName references a config map that contains a set of custom CA certificates to be used when communicating
+          with any outside entity (e.g., the SMO, the authorization server, etc.) that has its TLS certificate signed by
+          a non-public CA certificate.  The config map is expected to contain a single file called 'ca-bundle.crt'
+          containing all trusted CA certificates in PEM format.
+        displayName: Custom CA Certificates
+        path: caBundleName
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: CloudID is the global cloud ID value used to correlate the SMO
+          inventory record with the deployed cloud instance.
+        displayName: Cloud ID
+        path: cloudID
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: ClusterServerConfig contains the configuration for the resource
+          server.
+        displayName: Cluster Server Configuration
+        path: clusterServerConfig
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          Image is the full reference of the container image that contains the binary. This is
+          optional and the default will be the value passed to the `--image` command line flag of
+          the controller manager.
+        displayName: Image
+        path: image
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: IngressConfig defines configuration attributes related to the
+          Ingress endpoint.
+        displayName: Ingress Configuration
+        path: ingress
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          IngressHost defines the FQDN for the IMS endpoints.  By default, it is assumed to be "o2ims.apps.<cluster domain name>".
+          If a different DNS domain is used, then it should be customized here.
+        displayName: Ingress Host
+        path: ingress.ingressHost
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          TLS defines the TLS configuration for the IMS endpoints.  The certificate CN and DNS SAN values must match exactly
+          the value provided by the `IngressHost` value.  If the `IngressHost` value is not provided, then the CN and SAN
+          must match the expected default value.  If the TLS configuration is not provided, then the TLS configuration of
+          the default IngressController will be used.
+        displayName: TLS Configuration
+        path: ingress.tls
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          SecretName specifies the name of a secret (in the current namespace) containing an X.509 certificate and
+          private key. The secret must include 'tls.key' and 'tls.crt' keys. If the certificate is signed by
+          intermediate CA(s), the full certificate chain should be included in the certificate file, with the
+          leaf certificate first and the root CA last. The certificate's Common Name (CN) or Subject Alternative
+          Name (SAN) should align with the service's fully qualified domain name to support both ingress and
+          outgoing client certificate use cases.
+        displayName: TLS Certificate
+        path: ingress.tls.secretName
+      - description: ProvisioningServerConfig contains the configuration for the provisioning
+          server.
+        displayName: Provisioning Server Configuration
+        path: provisioningServerConfig
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: ResourceServerConfig contains the configuration for the resource
+          server.
+        displayName: Resource Server Configuration
+        path: resourceServerConfig
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: SmoConfig defines the configurable attributes to represent the
+          SMO instance
+        displayName: SMO Configuration
+        path: smo
+      - description: OAuthConfig defines the configurable attributes required to access
+          the OAuth2 authorization server
+        displayName: SMO OAuth Configuration
+        path: smo.oauth
+      - description: |-
+          ClientBindingClaim represents the claim contained within the OAuth JWT token which holds the certificate SHA256
+          fingerprint.  This is expected to be a CEL mapper expression.  It should only be changed in advanced scenarios.
+        displayName: OAuth Client Binding Claim
+        path: smo.oauth.clientBindingClaim
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          ClientSecretName represents the name of a secret (in the current namespace) which contains the client-id and
+          client-secret values used by the OAuth client.
+        displayName: Client Secret
+        path: smo.oauth.clientSecretName
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          GroupsClaim represents the claim contained within the OAuth JWT token which holds the list of groups/roles. This
+          must be a list/array and not a space separated list of names.  It must also be a top level attribute rather than
+          a nested field in the JSON structure of the JWT object.
+             i.e., {"roles": ["a", "b"]} rather than {"realm": {"roles": ["a", "b"}}.
+        displayName: OAuth Groups Claim
+        path: smo.oauth.groupsClaim
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          Scopes represents the OAuth scope values to request when acquiring a token.  Typically, this should be set to
+          "openid" in addition to any other scopes that the SMO specifically requires (e.g., "roles", "groups", etc...) to
+          authorize our requests
+        displayName: OAuth Scopes
+        path: smo.oauth.scopes
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          TokenEndpoint represents the API endpoint used to acquire a token (e.g., /protocol/openid-connect/token) which
+          will be appended to the base URL to form the full URL
+        displayName: OAuth Token Endpoint
+        path: smo.oauth.tokenEndpoint
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: URL represents the base URL of the authorization server. (e.g.,
+          https://keycloak.example.com/realms/oran)
+        displayName: OAuth URL
+        path: smo.oauth.url
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: UsernameClaim represents the claim contained within the OAuth
+          JWT token which holds the username
+        displayName: OAuth Username Claim
+        path: smo.oauth.usernameClaim
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: RegistrationEndpoint represents the API endpoint used to register
+          the O-Cloud Manager with the SMO.
+        displayName: Registration API Endpoint
+        path: smo.registrationEndpoint
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          TLSConfig defines the TLS attributes specific to enabling mTLS communication to the SMO and OAuth servers.  If
+          a configuration is provided, then an mTLS connection will be established to the destination; otherwise, a regular
+          TLS connection will be used.
+        displayName: Client TLS Configuration
+        path: smo.tls
+      - description: |-
+          SecretName specifies the name of a secret (in the current namespace) containing an X.509 certificate and
+          private key. The secret must include 'tls.key' and 'tls.crt' keys. If the certificate is signed by
+          intermediate CA(s), the full certificate chain should be included in the certificate file, with the
+          leaf certificate first and the root CA last. The certificate's Common Name (CN) or Subject Alternative
+          Name (SAN) should align with the service's fully qualified domain name to support both ingress and
+          outgoing client certificate use cases.
+        displayName: TLS Certificate
+        path: smo.tls.secretName
+      - description: URL represents the base URL of the SMO instance
+        displayName: SMO URL
+        path: smo.url
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - description: Stores the local cluster ID used as the local Cloud ID value.
+        displayName: Local Cluster ID
+        path: clusterID
+      - description: |-
+          INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+          Important: Run "make" to regenerate code after modifying this file
+        displayName: Conditions
+        path: conditions
+      - description: |-
+          Stores the ingress host domain resolved at runtime; either from a user override or automatically computed from
+          the default ingress controller.
+        displayName: Resolved Ingress Host Address
+        path: ingressHost
+      - displayName: Deployed Server Configurations
+        path: usedServerConfig
+      version: v1alpha1
+    - description: NodeAllocationRequest is the schema for an allocation request of
+        nodes
+      displayName: Node Allocation Request
+      kind: NodeAllocationRequest
+      name: nodeallocationrequests.plugins.clcm.openshift.io
+      resources:
+      - kind: Namespace
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: BootInterfaceLabel is the label of the boot interface.
+        displayName: Boot Interface Label
+        path: bootInterfaceLabel
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          ClusterID is the identifier of the O-Cloud that generated this request. The hardware
+          manager may want to use this to tag the nodes in its database, and to generate
+          statistics.
+        displayName: Cluster ID
+        path: clusterId
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - displayName: Config Transaction Id
+        path: configTransactionId
+      - displayName: Extensions
+        path: extensions
+      - description: HardwarePluginRef is the name of the HardwarePlugin.
+        displayName: Hardware Plugin Reference
+        path: hardwarePluginRef
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Location
+        displayName: Location
+        path: location
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - displayName: Node Group
+        path: nodeGroup
+      - description: Site
+        displayName: Site
+        path: site
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - description: Conditions represent the latest available observations of an
+          NodeAllocationRequest's state.
+        displayName: Conditions
+        path: conditions
+      - displayName: Hw Mgr Plugin
+        path: hwMgrPlugin
+      - displayName: Observed Config Transaction Id
+        path: observedConfigTransactionId
+      - description: Properties represent the node properties in the pool
+        displayName: Properties
+        path: properties
+      - displayName: Selected Groups
+        path: selectedGroups
+      version: v1alpha1
+    - description: ProvisioningRequest is the Schema for the provisioningrequests
+        API
+      displayName: Provisioning Request
+      kind: ProvisioningRequest
+      name: provisioningrequests.clcm.openshift.io
+      resources:
+      - kind: ClusterInstance
+        name: ""
+        version: siteconfig.open-cluster-management.io/v1alpha1
+      - kind: Namespace
+        name: ""
+        version: v1
+      specDescriptors:
+      - description: Description specifies a brief description of this provisioning
+          request, providing additional context or details.
+        displayName: Description
+        path: description
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Extensions holds additional custom key-value pairs that can be
+          used to extend the cluster's configuration.
+        displayName: Extensions
+        path: extensions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: Name specifies a human-readable name for this provisioning request,
+          intended for identification and descriptive purposes.
+        displayName: Name
+        path: name
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          TemplateName defines the base name of the referenced ClusterTemplate.
+          The full name of the ClusterTemplate is constructed as <TemplateName.TemplateVersion>.
+        displayName: Template Name
+        path: templateName
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: TemplateParameters provides the input data that conforms to the
+          OpenAPI v3 schema defined in the referenced ClusterTemplate's spec.templateParameterSchema.
+        displayName: Template Parameters
+        path: templateParameters
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: |-
+          TemplateVersion defines the version of the referenced ClusterTemplate.
+          The full name of the ClusterTemplate is constructed as <TemplateName.TemplateVersion>.
+        displayName: Template Version
+        path: templateVersion
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - displayName: Conditions
+        path: conditions
+      version: v1alpha1
+  description: |
+    # O-Cloud Manager operator
+    The O-Cloud Manager operator provides an implementation of the O-RAN O2 IMS API on top of OpenShift and ACM.
+
+    ## Where to find more information
+    You can find additional guidance in the [oran-o2ims repository](https://github.com/openshift-kni/oran-o2ims).
+  displayName: O-Cloud Manager Operator
+  icon:
+  - base64data: PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTQ1Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPlJlZEhhdC1Mb2dvLUhhdC1Db2xvcjwvdGl0bGU+PHBhdGggZD0iTTE1Ny43Nyw2Mi42MWExNCwxNCwwLDAsMSwuMzEsMy40MmMwLDE0Ljg4LTE4LjEsMTcuNDYtMzAuNjEsMTcuNDZDNzguODMsODMuNDksNDIuNTMsNTMuMjYsNDIuNTMsNDRhNi40Myw2LjQzLDAsMCwxLC4yMi0xLjk0bC0zLjY2LDkuMDZhMTguNDUsMTguNDUsMCwwLDAtMS41MSw3LjMzYzAsMTguMTEsNDEsNDUuNDgsODcuNzQsNDUuNDgsMjAuNjksMCwzNi40My03Ljc2LDM2LjQzLTIxLjc3LDAtMS4wOCwwLTEuOTQtMS43My0xMC4xM1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMjcuNDcsODMuNDljMTIuNTEsMCwzMC42MS0yLjU4LDMwLjYxLTE3LjQ2YTE0LDE0LDAsMCwwLS4zMS0zLjQybC03LjQ1LTMyLjM2Yy0xLjcyLTcuMTItMy4yMy0xMC4zNS0xNS43My0xNi42QzEyNC44OSw4LjY5LDEwMy43Ni41LDk3LjUxLjUsOTEuNjkuNSw5MCw4LDgzLjA2LDhjLTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0Mi41Myw0NGMwLDkuMjIsMzYuMywzOS40NSw4NC45NCwzOS40NU0xNjAsNzIuMDdjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDNzguNTQsMTA0LDM3LjU4LDc2LjYsMzcuNTgsNTguNDlhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIyLjI3LDUyLC41LDU1LC41LDc0LjIyYzAsMzEuNDgsNzQuNTksNzAuMjgsMTMzLjY1LDcwLjI4LDQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48L3N2Zz4=
+    mediatype: image/svg+xml
+  install:
+    spec:
+      clusterPermissions:
+      - rules:
+        - nonResourceURLs:
+          - /hardware-manager/inventory/*
+          verbs:
+          - get
+          - list
+        - nonResourceURLs:
+          - /hardware-manager/provisioning/*
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - update
+        - nonResourceURLs:
+          - /internal/v1/caas-alerts/alertmanager
+          verbs:
+          - create
+          - post
+        - nonResourceURLs:
+          - /o2ims-infrastructureCluster/v1/alarmDictionaries
+          verbs:
+          - get
+          - list
+        - nonResourceURLs:
+          - /o2ims-infrastructureCluster/v1/alarmDictionaries/*
+          verbs:
+          - get
+        - nonResourceURLs:
+          - /o2ims-infrastructureCluster/v1/nodeClusterTypes
+          verbs:
+          - get
+          - list
+        - nonResourceURLs:
+          - /o2ims-infrastructureCluster/v1/nodeClusterTypes/*
+          verbs:
+          - get
+        - nonResourceURLs:
+          - /o2ims-infrastructureCluster/v1/nodeClusters
+          verbs:
+          - get
+          - list
+        - nonResourceURLs:
+          - /o2ims-infrastructureCluster/v1/nodeClusters/*
+          verbs:
+          - get
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+          - update
+        - apiGroups:
+          - ""
+          resources:
+          - namespaces
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - pods
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - serviceaccounts
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ""
+          resources:
+          - services
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - agent-install.openshift.io
+          resources:
+          - agents
+          verbs:
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - apiextensions.k8s.io
+          resources:
+          - customresourcedefinitions
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - apps
+          resources:
+          - deployments
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - authentication.k8s.io
+          resources:
+          - tokenreviews
+          verbs:
+          - create
+        - apiGroups:
+          - authorization.k8s.io
+          resources:
+          - subjectaccessreviews
+          verbs:
+          - create
+        - apiGroups:
+          - batch
+          resources:
+          - cronjobs
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - clustertemplates
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - clustertemplates/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - clustertemplates/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - hardwareplugins
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - hardwareplugins/finalizers
+          verbs:
+          - patch
+          - update
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - hardwareplugins/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - hardwareprofiles
+          verbs:
+          - create
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - hardwareprofiles/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - hardwaretemplates
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - hardwaretemplates/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - nodes
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - nodes/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - provisioningrequests
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - provisioningrequests/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - clcm.openshift.io
+          resources:
+          - provisioningrequests/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - cluster.open-cluster-management.io
+          resources:
+          - managedclusters
+          verbs:
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - config.openshift.io
+          resources:
+          - clusterversions
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - lcm.openshift.io
+          resources:
+          - imagebasedgroupupgrades
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - lcm.openshift.io
+          resources:
+          - imagebasedgroupupgrades/status
+          verbs:
+          - get
+        - apiGroups:
+          - metal3.io
+          resources:
+          - baremetalhosts
+          verbs:
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - metal3.io
+          resources:
+          - firmwareschemas
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - metal3.io
+          resources:
+          - hostfirmwarecomponents
+          verbs:
+          - create
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - metal3.io
+          resources:
+          - hostfirmwaresettings
+          verbs:
+          - create
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - metal3.io
+          resources:
+          - hostupdatepolicies
+          verbs:
+          - create
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - metal3.io
+          resources:
+          - preprovisioningimages
+          verbs:
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheusrules
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - networking.k8s.io
+          resources:
+          - ingresses
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ocloud.openshift.io
+          resources:
+          - inventories
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ocloud.openshift.io
+          resources:
+          - inventories/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - ocloud.openshift.io
+          resources:
+          - inventories/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - operator.openshift.io
+          resources:
+          - ingresscontrollers
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - plugins.clcm.openshift.io
+          resources:
+          - allocatednodes
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - plugins.clcm.openshift.io
+          resources:
+          - allocatednodes/finalizers
+          verbs:
+          - patch
+          - update
+        - apiGroups:
+          - plugins.clcm.openshift.io
+          resources:
+          - allocatednodes/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - plugins.clcm.openshift.io
+          resources:
+          - nodeallocationrequests
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - plugins.clcm.openshift.io
+          resources:
+          - nodeallocationrequests/finalizers
+          verbs:
+          - patch
+          - update
+        - apiGroups:
+          - plugins.clcm.openshift.io
+          resources:
+          - nodeallocationrequests/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - policy.open-cluster-management.io
+          resources:
+          - policies
+          verbs:
+          - list
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - clusterrolebindings
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - rbac.authorization.k8s.io
+          resources:
+          - clusterroles
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - route.openshift.io
+          resources:
+          - routes
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - siteconfig.open-cluster-management.io
+          resources:
+          - clusterinstances
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        serviceAccountName: oran-o2ims-controller-manager
+      deployments:
+      - label:
+          app: o-cloud-manager
+          app.kubernetes.io/component: manager
+          app.kubernetes.io/created-by: oran-o2ims
+          app.kubernetes.io/instance: controller-manager
+          app.kubernetes.io/managed-by: kustomize
+          app.kubernetes.io/name: deployment
+          app.kubernetes.io/part-of: oran-o2ims
+          control-plane: controller-manager
+        name: oran-o2ims-controller-manager
+        spec:
+          replicas: 1
+          selector:
+            matchLabels:
+              control-plane: controller-manager
+          strategy: {}
+          template:
+            metadata:
+              annotations:
+                kubectl.kubernetes.io/default-container: manager
+              labels:
+                app: o-cloud-manager
+                control-plane: controller-manager
+            spec:
+              containers:
+              - command:
+                - /usr/bin/oran-o2ims
+                - start
+                - controller-manager
+                - --leader-elect
+                - --health-probe-bind-address=:8081
+                - --metrics-bind-address=:6443
+                - --metrics-tls-cert-dir=/secrets/tls/metrics
+                env:
+                - name: IMAGE
+                  value: quay.io/openshift-kni/oran-o2ims-operator:4.18.0
+                - name: POSTGRES_IMAGE
+                  value: registry.redhat.io/rhel9/postgresql-16:9.5-1731610873
+                - name: HWMGR_PLUGIN_NAMESPACE
+                  value: oran-o2ims
+                - name: DEPLOY_LOOPBACK_HW_PLUGIN
+                  value: "false"
+                - name: OCLOUD_MANAGER_NAMESPACE
+                  valueFrom:
+                    fieldRef:
+                      fieldPath: metadata.namespace
+                - name: IMAGE_PULL_POLICY
+                  value: IfNotPresent
+                image: quay.io/openshift-kni/oran-o2ims-operator:4.18.0
+                imagePullPolicy: IfNotPresent
+                livenessProbe:
+                  httpGet:
+                    path: /healthz
+                    port: 8081
+                  initialDelaySeconds: 15
+                  periodSeconds: 20
+                name: manager
+                ports:
+                - containerPort: 9443
+                  name: webhook-server
+                  protocol: TCP
+                - containerPort: 6443
+                  name: https
+                  protocol: TCP
+                readinessProbe:
+                  httpGet:
+                    path: /readyz
+                    port: 8081
+                  initialDelaySeconds: 5
+                  periodSeconds: 10
+                resources:
+                  requests:
+                    cpu: 10m
+                    memory: 64Mi
+                securityContext:
+                  allowPrivilegeEscalation: false
+                  capabilities:
+                    drop:
+                    - ALL
+                volumeMounts:
+                - mountPath: /tmp/k8s-webhook-server/serving-certs
+                  name: cert
+                  readOnly: true
+                - mountPath: /secrets/tls/metrics
+                  name: metrics-tls
+              securityContext:
+                runAsNonRoot: true
+              serviceAccountName: oran-o2ims-controller-manager
+              terminationGracePeriodSeconds: 10
+              volumes:
+              - name: cert
+                secret:
+                  defaultMode: 420
+                  secretName: oran-o2ims-webhook-server-cert
+              - name: metrics-tls
+                secret:
+                  defaultMode: 420
+                  secretName: controller-manager-metrics-tls
+      permissions:
+      - rules:
+        - apiGroups:
+          - ""
+          resources:
+          - configmaps
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - coordination.k8s.io
+          resources:
+          - leases
+          verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+        - apiGroups:
+          - ""
+          resources:
+          - events
+          verbs:
+          - create
+          - patch
+        serviceAccountName: oran-o2ims-controller-manager
+    strategy: deployment
+  installModes:
+  - supported: true
+    type: OwnNamespace
+  - supported: false
+    type: SingleNamespace
+  - supported: false
+    type: MultiNamespace
+  - supported: false
+    type: AllNamespaces
+  keywords:
+  - ORAN
+  - O2IMS
+  links:
+  - name: Oran O2ims
+    url: https://oran-o2ims.domain
+  maintainers:
+  - email: imihai@redhat.com
+    name: IrinaMihai
+  maturity: alpha
+  minKubeVersion: 1.28.0
+  provider:
+    name: Red Hat
+  replaces: oran-o2ims.v0.0.0
+  version: 4.18.0
+  webhookdefinitions:
+  - admissionReviewVersions:
+    - v1
+    containerPort: 443
+    deploymentName: oran-o2ims-controller-manager
+    failurePolicy: Fail
+    generateName: provisioningrequests.clcm.openshift.io
+    rules:
+    - apiGroups:
+      - clcm.openshift.io
+      apiVersions:
+      - v1alpha1
+      operations:
+      - CREATE
+      - UPDATE
+      resources:
+      - provisioningrequests
+    sideEffects: None
+    targetPort: 9443
+    type: ValidatingAdmissionWebhook
+    webhookPath: /validate-clcm-openshift-io-v1alpha1-provisioningrequest
