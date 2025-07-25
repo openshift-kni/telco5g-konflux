@@ -740,12 +740,12 @@ spec:
     - name: Lifecycle Agent
       url: https://lifecycle-agent.domain
   maturity: alpha
+  minKubeVersion: 1.32.0
   provider:
     name: Red Hat
-  version: 4.20.0
   relatedImages:
-    - name: manager
-      image: registry.redhat.io/openshift4/lifecycle-agent-rhel9-operator@sha256:5742926329c2e99c05d4f23e2da37fa9aac4dddc272cae9802776b09ae5043e6
-    - name: recert_image
-      image: registry.redhat.io/openshift4/recert-rhel9@sha256:c7a00a0202ca09c0c01d06ac6e073142a1ef3f5e437d94117a60898b24a757cc
-  minKubeVersion: 1.32.0
+    - image: registry.redhat.io/openshift4/lifecycle-agent-rhel9-operator@sha256:5742926329c2e99c05d4f23e2da37fa9aac4dddc272cae9802776b09ae5043e6
+      name: manager
+    - image: registry.redhat.io/openshift4/recert-rhel9@sha256:c7a00a0202ca09c0c01d06ac6e073142a1ef3f5e437d94117a60898b24a757cc
+      name: recert_image
+  version: 4.20.0
