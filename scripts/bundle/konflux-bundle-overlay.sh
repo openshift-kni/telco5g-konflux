@@ -8,24 +8,24 @@ set -o pipefail
 # Debug mode off by default
 DEBUG=false
 
-SCRIPT_NAME=$(basename "$(readlink -f "${BASH_SOURCE[0]}")")
+SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 
 MAP_STAGING="staging"
 MAP_PRODUCTION="production"
 MANAGER_KEY="manager"
 
 # release yaml variables allowed
-declare -A RELEASE_VARIABLES_ALLOWED=(
-    ["annotations"]=true
-    ["alm_examples"]=true
-    ["containerImage"]=true
-    ["description"]=true
-    ["display_name"]=true
-    ["manager_version"]=true
-    ["min_kube_version"]=true
-    ["recert_image"]=true
-    ["subscription_badges"]=true
-    ["version"]=true
+RELEASE_VARIABLES_ALLOWED=(
+    "annotations"
+    "alm_examples"
+    "containerImage"
+    "description"
+    "display_name"
+    "manager_version"
+    "min_kube_version"
+    "recert_image"
+    "subscription_badges"
+    "version"
 )
 
 print_log() {
@@ -50,9 +50,17 @@ check_preconditions() {
 pin_images() {
     print_log "Pinning images (sha256)..."
 
-    for image_name in "${!IMAGE_TO_SOURCE[@]}"; do
-        print_log "Replacing: image_name: $image_name, source: ${IMAGE_TO_SOURCE[$image_name]}, target: ${IMAGE_TO_TARGET[$image_name]}"
-        sed -i "s,${IMAGE_TO_SOURCE[$image_name]},${IMAGE_TO_TARGET[$image_name]},g" "$ARG_CSV_FILE"
+    local i=0
+    for image_name in "${IMAGE_TO_SOURCE_KEYS[@]}"; do
+        local source_image="${IMAGE_TO_SOURCE_VALUES[$i]}"
+        local target_image="${IMAGE_TO_TARGET_VALUES[$i]}"
+        print_log "Replacing: image_name: $image_name, source: $source_image, target: $target_image"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s,$source_image,$target_image,g" "$ARG_CSV_FILE"
+        else
+            sed -i "s,$source_image,$target_image,g" "$ARG_CSV_FILE"
+        fi
+        i=$((i + 1))
     done
 
     print_log "Pinning images completed!"
@@ -67,12 +75,13 @@ add_related_images() {
     yq e -i 'del(.spec.relatedImages)' "$ARG_CSV_FILE"
 
     # create a new section from scratch
-    declare -i index=0
-    for image_name in "${!IMAGE_TO_SOURCE[@]}"; do
-        print_log "Adding related image: name: $image_name source: ${IMAGE_TO_SOURCE[$image_name]}, image: ${IMAGE_TO_TARGET[$image_name]}"
-        yq e -i ".spec.relatedImages[$index].name=\"$image_name\" |
-                .spec.relatedImages[$index].image=\"${IMAGE_TO_TARGET[$image_name]}\"" "$ARG_CSV_FILE"
-        index=$((index + 1))
+    local i=0
+    for image_name in "${IMAGE_TO_SOURCE_KEYS[@]}"; do
+        local source_image="${IMAGE_TO_SOURCE_VALUES[$i]}"
+        local target_image="${IMAGE_TO_TARGET_VALUES[$i]}"
+        print_log "Adding related image: name: $image_name source: $source_image, image: $target_image"
+        yq e -i ".spec.relatedImages[$i].name=\"$image_name\" | .spec.relatedImages[$i].image=\"$target_image\"" "$ARG_CSV_FILE"
+        i=$((i + 1))
     done
 
     print_log "Adding related images completed!"
@@ -82,23 +91,40 @@ add_related_images() {
 parse_mapping_images_file() {
     print_log "Parsing mapping image file..."
 
-    # Extract keys and images using mapfile/readarray for better shellcheck compliance
+    # Extract keys and images using a loop for portability
     local keys staging_images production_images
-    mapfile -t keys < <(yq eval '.[].key' "$ARG_MAPPING_FILE")
-    mapfile -t staging_images < <(yq eval '.[].staging' "$ARG_MAPPING_FILE")
-    mapfile -t production_images < <(yq eval '.[].production' "$ARG_MAPPING_FILE")
+    keys=()
+    staging_images=()
+    production_images=()
+
+    # Read arrays line by line using a more portable approach
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && keys+=("$line")
+    done < <(yq eval '.[].key' "$ARG_MAPPING_FILE")
+
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && staging_images+=("$line")
+    done < <(yq eval '.[].staging' "$ARG_MAPPING_FILE")
+
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && production_images+=("$line")
+    done < <(yq eval '.[].production' "$ARG_MAPPING_FILE")
+
     local entries=${#keys[@]}
 
-    # Declare associative arrays
-    declare -gA IMAGE_TO_STAGING=()
-    declare -gA IMAGE_TO_PRODUCTION=()
+    # Use indexed arrays to simulate associative arrays for portability
+    IMAGE_TO_STAGING_KEYS=()
+    IMAGE_TO_STAGING_VALUES=()
+    IMAGE_TO_PRODUCTION_KEYS=()
+    IMAGE_TO_PRODUCTION_VALUES=()
 
-    declare -i i=0
+    local i=0
     for ((; i<entries; i++)); do
-        # Store in associative arrays
-        local key=${keys[i]}
-        IMAGE_TO_STAGING["$key"]="${staging_images[i]}"
-        IMAGE_TO_PRODUCTION["$key"]="${production_images[i]}"
+        local key="${keys[i]}"
+        IMAGE_TO_STAGING_KEYS+=("$key")
+        IMAGE_TO_STAGING_VALUES+=("${staging_images[i]}")
+        IMAGE_TO_PRODUCTION_KEYS+=("$key")
+        IMAGE_TO_PRODUCTION_VALUES+=("${production_images[i]}")
     done
 
     print_log "Parsing mapping image file completed!"
@@ -116,39 +142,61 @@ map_images() {
 
     parse_mapping_images_file
 
-    for image_name in "${!IMAGE_TO_TARGET[@]}"; do
-        local image_name_target="${IMAGE_TO_TARGET[$image_name]}"
+    local i=0
+    for image_name in "${IMAGE_TO_TARGET_KEYS[@]}"; do
+        local image_name_target="${IMAGE_TO_TARGET_VALUES[$i]}"
 
         # requires an image already pinned, sha256 format: '...@sha256:..."
         local image_name_target_trimmed="${image_name_target%@*}"
 
         local image_name_target_trimmed_mapped=""
         if [[ "$ARG_MAP" == "$MAP_STAGING" ]]; then
-            if [[ -z "${IMAGE_TO_STAGING[$image_name]-}" ]]; then
+            local j=0
+            for key in "${IMAGE_TO_STAGING_KEYS[@]}"; do
+                if [[ "$key" == "$image_name" ]]; then
+                    image_name_target_trimmed_mapped="${IMAGE_TO_STAGING_VALUES[$j]}"
+                    break
+                fi
+                j=$((j + 1))
+            done
+
+            if [[ -z "$image_name_target_trimmed_mapped" ]]; then
                 print_log "Warning: no staging image mapped for: $image_name" >&2
+                i=$((i + 1))
                 continue
             fi
-
-            image_name_target_trimmed_mapped="${IMAGE_TO_STAGING[$image_name]}"
 
         elif [[ "$ARG_MAP" == "$MAP_PRODUCTION" ]]; then
-            if [[ -z "${IMAGE_TO_PRODUCTION[$image_name]-}" ]]; then
+            local j=0
+            for key in "${IMAGE_TO_PRODUCTION_KEYS[@]}"; do
+                if [[ "$key" == "$image_name" ]]; then
+                    image_name_target_trimmed_mapped="${IMAGE_TO_PRODUCTION_VALUES[$j]}"
+                    break
+                fi
+                j=$((j + 1))
+            done
+
+            if [[ -z "$image_name_target_trimmed_mapped" ]]; then
                 print_log "Warning: no production image mapped for: $image_name" >&2
+                i=$((i + 1))
                 continue
             fi
-
-            image_name_target_trimmed_mapped="${IMAGE_TO_PRODUCTION[$image_name]}"
-
         fi
 
         print_log "Replacing: image_name: $image_name, original: $image_name_target_trimmed, mapped: $image_name_target_trimmed_mapped"
-        sed -i "s,$image_name_target_trimmed,$image_name_target_trimmed_mapped,g" "$ARG_CSV_FILE"
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s,$image_name_target_trimmed,$image_name_target_trimmed_mapped,g" "$ARG_CSV_FILE"
+        else
+            sed -i "s,$image_name_target_trimmed,$image_name_target_trimmed_mapped,g" "$ARG_CSV_FILE"
+        fi
+        i=$((i + 1))
     done
 
     print_log "Mapping images completed!"
 }
 
 parse_pinning_images_file() {
+    local ARG_PINNING_FILE="$1"
     print_log "Parsing pinning file..."
 
     if [[ ! -f "$ARG_PINNING_FILE" ]]; then
@@ -156,30 +204,49 @@ parse_pinning_images_file() {
         exit 1
     fi
 
-    # Extract keys and images using mapfile/readarray for better shellcheck compliance
+    # Extract keys and images using a loop for portability
     local keys sources targets
-    mapfile -t keys < <(yq eval '.[].key' "$ARG_PINNING_FILE")
-    mapfile -t sources < <(yq eval '.[].source' "$ARG_PINNING_FILE")
-    mapfile -t targets < <(yq eval '.[].target' "$ARG_PINNING_FILE")
+    keys=()
+    sources=()
+    targets=()
+
+    # Read arrays line by line using a more portable approach
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && keys+=("$line")
+    done < <(yq eval '.[].key' "$ARG_PINNING_FILE")
+
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && sources+=("$line")
+    done < <(yq eval '.[].source' "$ARG_PINNING_FILE")
+
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && targets+=("$line")
+    done < <(yq eval '.[].target' "$ARG_PINNING_FILE")
+
     local entries=${#keys[@]}
 
-    # Declare associative arrays
-    declare -gA IMAGE_TO_SOURCE=()
-    declare -gA IMAGE_TO_TARGET=()
+    # Use indexed arrays to simulate associative arrays for portability
+    IMAGE_TO_SOURCE_KEYS=()
+    IMAGE_TO_SOURCE_VALUES=()
+    IMAGE_TO_TARGET_KEYS=()
+    IMAGE_TO_TARGET_VALUES=()
 
-    declare -i i=0
+    local i=0
     for ((; i<entries; i++)); do
-        # Store in associative arrays
-        local key=${keys[i]}
-        IMAGE_TO_SOURCE["$key"]="${sources[i]}"
-        IMAGE_TO_TARGET["$key"]="${targets[i]}"
+        local key="${keys[i]}"
+        IMAGE_TO_SOURCE_KEYS+=("$key")
+        IMAGE_TO_SOURCE_VALUES+=("${sources[i]}")
+        IMAGE_TO_TARGET_KEYS+=("$key")
+        IMAGE_TO_TARGET_VALUES+=("${targets[i]}")
     done
 
     if [ "$DEBUG" = true ]; then
-        for key in "${!IMAGE_TO_SOURCE[@]}"; do
+        local i=0
+        for key in "${IMAGE_TO_SOURCE_KEYS[@]}"; do
             print_log "- key: $key"
-            print_log "  source: ${IMAGE_TO_SOURCE[$key]}"
-            print_log "  target: ${IMAGE_TO_TARGET[$key]}"
+            print_log "  source: ${IMAGE_TO_SOURCE_VALUES[$i]}"
+            print_log "  target: ${IMAGE_TO_TARGET_VALUES[$i]}"
+            i=$((i + 1))
         done
     fi
 
@@ -187,60 +254,55 @@ parse_pinning_images_file() {
     return 0
 }
 
+
+# Global variables for script arguments
+ARG_MAPPING_FILE=""
+ARG_PINNING_FILE=""
+ARG_CSV_FILE=""
+ARG_MAP=""
+ARG_RELEASE_FILE=""
+
 parse_args() {
     print_log "Parsing args..."
 
-    # command line options
-    local options=
-    local long_options="set-pinning-file:,set-mapping-file:,set-release-file:,set-csv-file:,set-mapping-staging,set-mapping-production,help"
-
-    local parsed
-    parsed=$(getopt --options="$options" --longoptions="$long_options" --name "$SCRIPT_NAME" -- "$@")
-    eval set -- "$parsed"
-
     local map_staging=0
     local map_production=0
-    declare -g ARG_MAPPING_FILE=""
-    declare -g ARG_PINNING_FILE=""
-    declare -g ARG_CSV_FILE=""
-    declare -g ARG_MAP=""
-    declare -g ARG_RELEASE_FILE=""
 
-    while true; do
+    while [[ $# -gt 0 ]]; do
         case $1 in
             --help)
                 usage
                 exit 0
                 ;;
             --set-csv-file)
-                ARG_CSV_FILE=$2
-                shift 2
+                ARG_CSV_FILE="$2"
+                shift
+                shift
                 ;;
             --set-pinning-file)
-                ARG_PINNING_FILE=$2
-                shift 2
+                ARG_PINNING_FILE="$2"
+                shift
+                shift
                 ;;
             --set-mapping-file)
-                ARG_MAPPING_FILE=$2
-                shift 2
+                ARG_MAPPING_FILE="$2"
+                shift
+                shift
                 ;;
             --set-mapping-staging)
                 map_staging=1
                 ARG_MAP=$MAP_STAGING
-                shift 1
+                shift
                 ;;
             --set-mapping-production)
                 map_production=1
                 ARG_MAP=$MAP_PRODUCTION
-                shift 1
+                shift
                 ;;
             --set-release-file)
-                ARG_RELEASE_FILE=$2
-                shift 2
-                ;;
-            --)
+                ARG_RELEASE_FILE="$2"
                 shift
-                break
+                shift
                 ;;
             *)
                 print_log "Error: unexpected option: $1" >&2
@@ -301,30 +363,45 @@ parse_release_file()
     print_log "Parsing release file..."
 
     # release yaml variables configured
-    declare -gA RELEASE_VARIABLES_CONFIGURED
+    RELEASE_VARIABLES_CONFIGURED_KEYS=()
+    RELEASE_VARIABLES_CONFIGURED_VALUES=()
 
     # compose RELEASE_VARIABLES_CONFIGURED
     local var_keys
-    var_keys=$(yq e '.variables | keys | .[]' "$ARG_RELEASE_FILE")
+    var_keys=()
 
-    while IFS= read -r var; do
+    # Read array line by line using a more portable approach
+    while IFS= read -r line; do
+        [[ -n "$line" ]] && var_keys+=("$line")
+    done < <(yq e '.variables | keys | .[]' "$ARG_RELEASE_FILE")
+
+    for var in "${var_keys[@]}"; do
         if [[ -n "$var" ]]; then
             # Get the value for this variable
             local value
             value=$(yq e ".variables.$var" "$ARG_RELEASE_FILE")
 
             # Check if the variable is allowed
-            if [[ -z "${RELEASE_VARIABLES_ALLOWED[$var]+_}" ]]; then
+            local allowed=false
+            for allowed_key in "${RELEASE_VARIABLES_ALLOWED[@]}"; do
+                if [[ "$allowed_key" == "$var" ]]; then
+                    allowed=true
+                    break
+                fi
+            done
+
+            if [[ "$allowed" == "false" ]]; then
                 print_log "Error: Variable '$var' is not allowed in $ARG_RELEASE_FILE" >&2
                 exit 1
             else
-                # Store in associative array
-                RELEASE_VARIABLES_CONFIGURED["$var"]="$value"
+                # Store in indexed arrays
+                RELEASE_VARIABLES_CONFIGURED_KEYS+=("$var")
+                RELEASE_VARIABLES_CONFIGURED_VALUES+=("$value")
             fi
 
             print_log_debug "RELEASE_VARIABLES_CONFIGURED, key: $var, value: $value"
         fi
-    done <<< "$var_keys"
+    done
 
     print_log "Parsing release file completed!"
     return 0
@@ -347,8 +424,9 @@ overlay_release()
     yq e -i 'del(.spec.replaces)' "$ARG_CSV_FILE"
     yq e -i 'del(.metadata.annotations["olm.skipRange"])' "$ARG_CSV_FILE"
 
-    for key in "${!RELEASE_VARIABLES_CONFIGURED[@]}"; do
-        local value=${RELEASE_VARIABLES_CONFIGURED[$key]}
+    local i=0
+    for key in "${RELEASE_VARIABLES_CONFIGURED_KEYS[@]}"; do
+        local value="${RELEASE_VARIABLES_CONFIGURED_VALUES[$i]}"
         local value_error=0
 
         print_log_debug "RELEASE_VARIABLES_CONFIGURED, Key: $key, Value: $value"
@@ -362,7 +440,14 @@ overlay_release()
                 ;;
             "containerImage")
                 if [[ "$value" == PLACEHOLDER_CONTAINER_IMAGE ]]; then
-                    value=${IMAGE_TO_TARGET["$MANAGER_KEY"]:-}
+                    local j=0
+                    for image_key in "${IMAGE_TO_TARGET_KEYS[@]}"; do
+                        if [[ "$image_key" == "$MANAGER_KEY" ]]; then
+                            value="${IMAGE_TO_TARGET_VALUES[$j]}"
+                            break
+                        fi
+                        j=$((j + 1))
+                    done
                     if [[ -z "$value" ]]; then
                         print_log "Error: no manager image pinned for key: $MANAGER_KEY. Check the pinning file: $ARG_PINNING_FILE" >&2
                         value_error=1
@@ -393,7 +478,14 @@ overlay_release()
                 ;;
             "recert_image")
                 if [[ "$value" == PLACEHOLDER_RECERT_IMAGE ]]; then
-                    value=${IMAGE_TO_TARGET["$key"]:-}
+                    local j=0
+                    for image_key in "${IMAGE_TO_TARGET_KEYS[@]}"; do
+                        if [[ "$image_key" == "$key" ]]; then
+                            value="${IMAGE_TO_TARGET_VALUES[$j]}"
+                            break
+                        fi
+                        j=$((j + 1))
+                    done
                     if [[ -z "$value" ]]; then
                         print_log "Error: no recert image pinned for key: $key. Check the pinning file: $ARG_PINNING_FILE" >&2
                         value_error=1
@@ -414,20 +506,42 @@ overlay_release()
             print_log "Error: failed to set release variable: $key with value: $value on $ARG_CSV_FILE" >&2
             exit 1
         fi
+        i=$((i + 1))
     done
 
     print_log "Overlaying release completed!"
     return 0
 }
 
+# Sort YAML keys for consistent output
+sort_yaml_keys() {
+    print_log "Sorting YAML keys for consistent output..."
+
+    # Create a temporary file for the sorted output
+    local temp_file
+    temp_file=$(mktemp)
+
+    # Sort keys recursively at all levels and maintain formatting
+    if yq e -P '.. |= sort_keys(.)' "$ARG_CSV_FILE" > "$temp_file"; then
+        mv "$temp_file" "$ARG_CSV_FILE"
+        print_log "YAML keys sorted successfully!"
+    else
+        print_log "Warning: Failed to sort YAML keys, continuing with unsorted output" >&2
+        rm -f "$temp_file"
+    fi
+
+    return 0
+}
+
 main() {
     check_preconditions
     parse_args "$@"
-    parse_pinning_images_file
+    parse_pinning_images_file "$ARG_PINNING_FILE"
     pin_images
     add_related_images
     overlay_release
-    map_images    # this MUST always be the last action
+    map_images    # mapping images must be done before sorting
+    sort_yaml_keys    # this MUST always be the final action for consistent output
 }
 
 usage() {

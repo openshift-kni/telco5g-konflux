@@ -6,10 +6,10 @@
 set -euo pipefail
 
 # Common variables setup
-SCRIPT_DIR=$(dirname "$(readlink -f "${BASH_SOURCE[1]}")")
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[1]}" )" &> /dev/null && pwd )
 RELEASE_DIR=$(basename "$SCRIPT_DIR")
 OPERATOR_DIR=$(basename "$(dirname "$SCRIPT_DIR")")
-SCRIPT_NAME=$(basename "$(readlink -f "${BASH_SOURCE[1]}")")
+SCRIPT_NAME=$(basename "${BASH_SOURCE[1]}")
 SCRIPT_LOG="$OPERATOR_DIR/$RELEASE_DIR/$SCRIPT_NAME"
 
 # Common logging functions
@@ -125,12 +125,13 @@ run_diff_comparison() {
 
     local yq_del_expr="del(.metadata.annotations.createdAt)"
 
+    # Use portable diff options and preprocess files to remove trailing spaces
+    # This approach works on both GNU diff (Linux) and BSD diff (macOS)
     local diff_cmd="diff --unified=0 \
         --ignore-space-change \
         --ignore-blank-lines \
-        --ignore-trailing-space \
-        --label=\"actual CSV file: $CSV_ACTUAL_FILE\" <(yq e '$yq_del_expr' \"$CSV_ACTUAL_FILE\" | sed -r '/^[[:space:]]*#.*$/d') \
-        --label=\"expected CSV file: $CSV_EXPECTED_FILE\" <(yq e '$yq_del_expr' \"$CSV_EXPECTED_FILE\" | sed -r '/^[[:space:]]*#.*$/d')"
+        --label=\"actual CSV file: $CSV_ACTUAL_FILE\" <(yq e '$yq_del_expr' \"$CSV_ACTUAL_FILE\" | sed -E '/^[[:space:]]*#.*$/d' | sed -E 's/[[:space:]]+$//') \
+        --label=\"expected CSV file: $CSV_EXPECTED_FILE\" <(yq e '$yq_del_expr' \"$CSV_EXPECTED_FILE\" | sed -E '/^[[:space:]]*#.*$/d' | sed -E 's/[[:space:]]+$//')"
 
     print_log "Running diff command: $diff_cmd"
 

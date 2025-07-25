@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-SCRIPT_NAME=$(basename "$(readlink -f "${BASH_SOURCE[0]}")")
+SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 
 # Global counters
 TOTAL_TESTS=0
@@ -37,7 +37,10 @@ run_tests_for_operator() {
     print_log "Running tests for operator: $operator, release: $release"
 
     # Find all test files
-    mapfile -t test_files < <(find "$test_path" -name "*.test.sh" -type f 2>/dev/null | sort)
+    test_files=()
+    while IFS= read -r -d $'\0' file; do
+        test_files+=("$file")
+    done < <(find "$test_path" -name "*.test.sh" -type f -print0 2>/dev/null | sort -z)
 
     if [[ ${#test_files[@]} -eq 0 ]]; then
         print_log "Error: no test files found in $test_path"

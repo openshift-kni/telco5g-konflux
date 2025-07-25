@@ -4,58 +4,58 @@ metadata:
   annotations:
     alm-examples: |-
       [
-        {
-          "apiVersion": "nodetopology.openshift.io/v1alpha1",
-          "kind": "NUMAResourcesOperator",
-          "metadata": {
-            "name": "numaresourcesoperator"
-          },
-          "spec": {
-            "nodeGroups": [
-              {
-                "machineConfigPoolSelector": {
-                  "matchLabels": {
-                    "pools.operator.machineconfiguration.openshift.io/worker": ""
-                  }
-                }
-              }
-            ]
-          }
-        },
-        {
-          "apiVersion": "nodetopology.openshift.io/v1alpha1",
-          "kind": "NUMAResourcesScheduler",
-          "metadata": {
-            "name": "numaresourcesscheduler"
-          },
-          "spec": {
-            "imageSpec": "URL_OF_SCHEDULER_IMAGE_FROM_REDHAT_REGISTRY",
-            "logLevel": "Normal",
-            "schedulerName": "topo-aware-scheduler"
-          }
-        }
+       {
+         "apiVersion": "nodetopology.openshift.io/v1alpha1",
+         "kind": "NUMAResourcesOperator",
+         "metadata": {
+           "name": "numaresourcesoperator"
+         },
+         "spec": {
+           "nodeGroups": [
+             {
+               "machineConfigPoolSelector": {
+                 "matchLabels": {
+                   "pools.operator.machineconfiguration.openshift.io/worker": ""
+                 }
+               }
+             }
+           ]
+         }
+       },
+       {
+         "apiVersion": "nodetopology.openshift.io/v1alpha1",
+         "kind": "NUMAResourcesScheduler",
+         "metadata": {
+           "name": "numaresourcesscheduler"
+         },
+         "spec": {
+           "imageSpec": "URL_OF_SCHEDULER_IMAGE_FROM_REDHAT_REGISTRY",
+           "logLevel": "Normal",
+           "schedulerName": "topo-aware-scheduler"
+         }
+       }
       ]
     capabilities: Basic Install
     createdAt: "2025-04-15T15:54:00Z"
+    features.operators.openshift.io/cnf: "true"
+    features.operators.openshift.io/cni: "false"
+    features.operators.openshift.io/csi: "false"
+    features.operators.openshift.io/disconnected: "true"
+    features.operators.openshift.io/fips-compliant: "true"
+    features.operators.openshift.io/proxy-aware: "false"
+    features.operators.openshift.io/tls-profiles: "false"
+    features.operators.openshift.io/token-auth-aws: "false"
+    features.operators.openshift.io/token-auth-azure: "false"
+    features.operators.openshift.io/token-auth-gcp: "false"
     operatorframework.io/cluster-monitoring: "true"
-    operators.operatorframework.io/builder: operator-sdk-v1.36.1
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
     operators.openshift.io/valid-subscription: |-
       [
         "OpenShift Kubernetes Engine",
         "OpenShift Container Platform",
         "OpenShift Platform Plus"
       ]
-    features.operators.openshift.io/disconnected: "true"
-    features.operators.openshift.io/fips-compliant: "true"
-    features.operators.openshift.io/proxy-aware: "false"
-    features.operators.openshift.io/csi: "false"
-    features.operators.openshift.io/cni: "false"
-    features.operators.openshift.io/cnf: "true"
-    features.operators.openshift.io/tls-profiles: "false"
-    features.operators.openshift.io/token-auth-aws: "false"
-    features.operators.openshift.io/token-auth-azure: "false"
-    features.operators.openshift.io/token-auth-gcp: "false"
+    operators.operatorframework.io/builder: operator-sdk-v1.36.1
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
   name: numaresources-operator.v4.20.0
   namespace: placeholder
 spec:
@@ -597,7 +597,7 @@ spec:
   minKubeVersion: 1.23.0
   provider:
     name: Red Hat
-  version: 4.20.0
   relatedImages:
-    - name: manager
-      image: registry.redhat.io/openshift4/numaresources-rhel9-operator@sha256:746b9854b2f9ac1657d0690df57d99b1647684813b5dcf95ebdcb80d53d3aa95
+    - image: registry.redhat.io/openshift4/numaresources-rhel9-operator@sha256:746b9854b2f9ac1657d0690df57d99b1647684813b5dcf95ebdcb80d53d3aa95
+      name: manager
+  version: 4.20.0
