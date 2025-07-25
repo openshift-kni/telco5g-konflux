@@ -13,4 +13,3 @@ variables:
   min_kube_version: "1.32.0"
   recert_image: PLACEHOLDER_RECERT_IMAGE
   version: "4.20.0"
-

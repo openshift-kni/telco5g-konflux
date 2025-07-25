@@ -9,4 +9,3 @@ variables:
   manager_version: "topology-aware-lifecycle-manager.v4.20.0"
   min_kube_version: "1.32.0"
   version: "4.20.0"
-

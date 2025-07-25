@@ -1,3 +1,4 @@
+---
 # Manager
 - key: manager
   staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
