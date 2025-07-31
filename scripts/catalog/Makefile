@@ -93,13 +93,33 @@ konflux-validate-catalog: opm ## Validate the current catalog file
 	$(OPM) validate $(dir $(CATALOG_KONFLUX))
 
 .PHONY: konflux-generate-catalog
-konflux-generate-catalog: yq opm ## Generate a quay.io catalog
+konflux-generate-catalog: yq opm ## Generate a quay.io catalog for OCP 4.17 and newer
 	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
 	touch $(CATALOG_KONFLUX)
 	$(OPM) alpha render-template basic --output yaml --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
 
+.PHONY: konflux-generate-catalog-legacy
+konflux-generate-catalog-legacy: yq opm ## Generate a quay.io catalog for OCP 4.16 and older
+	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
+	touch $(CATALOG_KONFLUX)
+	$(OPM) alpha render-template basic --output yaml $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
+
 .PHONY: konflux-generate-catalog-production
-konflux-generate-catalog-production: konflux-generate-catalog ## Generate a registry.redhat.io catalog
+konflux-generate-catalog-production: konflux-generate-catalog ## Generate a registry.redhat.io catalog for OCP 4.17 and newer
+	@echo "Overlaying bundle image for production..."
+	@echo "  From: $(QUAY_BUNDLE_IMAGE)"
+	@echo "  To: $(PRODUCTION_BUNDLE_IMAGE)"
+	# overlay the bundle image for production
+	if [ "$$(uname)" = "Darwin" ]; then \
+		sed -i '' 's|$(QUAY_BUNDLE_IMAGE)\(@sha256:[a-f0-9]*\)|$(PRODUCTION_BUNDLE_IMAGE)\1|g' $(CATALOG_KONFLUX); \
+	else \
+		sed -i 's|$(QUAY_BUNDLE_IMAGE)\(@sha256:[a-f0-9]*\)|$(PRODUCTION_BUNDLE_IMAGE)\1|g' $(CATALOG_KONFLUX); \
+	fi
+	# From now on, all the related images must reference production (registry.redhat.io) exclusively
+	$(SCRIPT_DIR)/konflux-validate-related-images-production.sh --set-catalog-file $(CATALOG_KONFLUX)
+
+.PHONY: konflux-generate-catalog-production-legacy
+konflux-generate-catalog-production-legacy: konflux-generate-catalog-legacy ## Generate a registry.redhat.io catalog for OCP 4.16 and older
 	@echo "Overlaying bundle image for production..."
 	@echo "  From: $(QUAY_BUNDLE_IMAGE)"
 	@echo "  To: $(PRODUCTION_BUNDLE_IMAGE)"
