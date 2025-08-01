@@ -517,17 +517,12 @@ overlay_release()
 sort_yaml_keys() {
     print_log "Sorting YAML keys for consistent output..."
 
-    # Create a temporary file for the sorted output
-    local temp_file
-    temp_file=$(mktemp)
-
-    # Sort keys recursively at all levels and maintain formatting
-    if yq e -P '.. |= sort_keys(.)' "$ARG_CSV_FILE" > "$temp_file"; then
-        mv "$temp_file" "$ARG_CSV_FILE"
+    # Sort keys recursively at all levels and maintain formatting - in place
+    if yq e -i -P '.. |= sort_keys(.)' "$ARG_CSV_FILE"; then
         print_log "YAML keys sorted successfully!"
     else
         print_log "Warning: Failed to sort YAML keys, continuing with unsorted output" >&2
-        rm -f "$temp_file"
+        return 1
     fi
 
     return 0
