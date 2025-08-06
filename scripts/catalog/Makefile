@@ -16,14 +16,20 @@ OPM ?= $(TOOL_DIR)/opm
 OPERATOR_SDK ?= $(TOOL_DIR)/operator-sdk
 
 # Default file paths - can be overridden
-CATALOG_TEMPLATE_FILE ?= .konflux/catalog/catalog-template.in.yaml
+CATALOG_TEMPLATE_FILE_INPUT ?= .konflux/catalog/catalog-template.in.yaml
+CATALOG_TEMPLATE_FILE_OUTPUT ?= .konflux/catalog/catalog-template.out.yaml
 BUNDLE_BUILDS_FILE ?= .konflux/catalog/bundle.builds.in.yaml
 CATALOG_FILE ?= catalog.yaml
 
 # Konflux-specific variables
-CATALOG_TEMPLATE_KONFLUX ?= $(CATALOG_TEMPLATE_FILE)
+CATALOG_TEMPLATE_KONFLUX_INPUT ?= $(CATALOG_TEMPLATE_FILE_INPUT)
+CATALOG_TEMPLATE_KONFLUX_OUTPUT ?= $(CATALOG_TEMPLATE_FILE_OUTPUT)
 CATALOG_KONFLUX ?= $(CATALOG_FILE)
 PACKAGE_NAME_KONFLUX ?= telco5g-konflux
+
+# For backwards compatibility, set the original targets to the input values
+CATALOG_TEMPLATE_FILE ?= $(CATALOG_TEMPLATE_FILE_INPUT)
+CATALOG_TEMPLATE_KONFLUX ?= $(CATALOG_TEMPLATE_KONFLUX_INPUT)
 
 # Bundle image configuration - can be overridden for different operators
 QUAY_TENANT_NAME ?= telco-5g-tenant
@@ -66,11 +72,12 @@ operator-sdk: ## Ensure operator-sdk is available
 	fi
 
 .PHONY: update-catalog-template
-update-catalog-template: ## Update catalog template (use CATALOG_TEMPLATE_FILE and BUNDLE_BUILDS_FILE to specify files)
+update-catalog-template: ## Update catalog template (use CATALOG_TEMPLATE_FILE and BUNDLE_BUILDS_FILE to specify files, or CATALOG_TEMPLATE_FILE_INPUT/OUTPUT for separate files)
 	@echo "Updating catalog template..."
-	@echo "  Template file: $(CATALOG_TEMPLATE_FILE)"
-	@echo "  Bundle builds file: $(BUNDLE_BUILDS_FILE)"
-	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_FILE) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
+	echo "  Input template file: $(CATALOG_TEMPLATE_FILE_INPUT)" ;\
+	echo "  Output template file: $(CATALOG_TEMPLATE_FILE_OUTPUT)" ;\
+	echo "  Bundle builds file: $(BUNDLE_BUILDS_FILE)" ;\
+	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-input-file $(CATALOG_TEMPLATE_FILE_INPUT) --set-catalog-template-output-file $(CATALOG_TEMPLATE_FILE_OUTPUT) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE) ;\
 
 .PHONY: validate-production-images
 validate-production-images: ## Validate related images for production (use CATALOG_FILE to specify file)
@@ -82,8 +89,11 @@ validate-production-images: ## Validate related images for production (use CATAL
 konflux-validate-catalog-template-bundle: yq operator-sdk ## Validate the last bundle entry on the catalog template file
 	@{ \
 	set -e ;\
-	bundle=$$($(YQ) ".entries[-1].image" $(CATALOG_TEMPLATE_KONFLUX)) ;\
-	echo "validating the last bundle entry: $${bundle} on catalog template: $(CATALOG_TEMPLATE_KONFLUX)" ;\
+	echo "copying unmodified catalog template from $(CATALOG_TEMPLATE_KONFLUX_INPUT) to $(CATALOG_TEMPLATE_KONFLUX_OUTPUT)" ;\
+	cp $(CATALOG_TEMPLATE_KONFLUX_INPUT) $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) ;\
+	echo "updating template data in $(CATALOG_TEMPLATE_KONFLUX_OUTPUT)"
+	bundle=$$($(YQ) ".entries[-1].image" $(CATALOG_TEMPLATE_KONFLUX_OUTPUT)) ;\
+	echo "validating the last bundle entry: $${bundle} on catalog template: $(CATALOG_TEMPLATE_KONFLUX_OUTPUT)" ;\
 	$(OPERATOR_SDK) bundle validate --image-builder=$(ENGINE) $${bundle} ;\
 	}
 
@@ -94,15 +104,15 @@ konflux-validate-catalog: opm ## Validate the current catalog file
 
 .PHONY: konflux-generate-catalog
 konflux-generate-catalog: yq opm ## Generate a quay.io catalog for OCP 4.17 and newer
-	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
+	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-input-file $(CATALOG_TEMPLATE_KONFLUX_INPUT) --set-catalog-template-output-file $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
 	touch $(CATALOG_KONFLUX)
-	$(OPM) alpha render-template basic --output yaml --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
+	$(OPM) alpha render-template basic --output yaml --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) > $(CATALOG_KONFLUX)
 
 .PHONY: konflux-generate-catalog-legacy
 konflux-generate-catalog-legacy: yq opm ## Generate a quay.io catalog for OCP 4.16 and older
-	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
+	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-input-file $(CATALOG_TEMPLATE_KONFLUX_INPUT) --set-catalog-template-output-file $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
 	touch $(CATALOG_KONFLUX)
-	$(OPM) alpha render-template basic --output yaml $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
+	$(OPM) alpha render-template basic --output yaml $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) > $(CATALOG_KONFLUX)
 
 .PHONY: konflux-generate-catalog-production
 konflux-generate-catalog-production: konflux-generate-catalog ## Generate a registry.redhat.io catalog for OCP 4.17 and newer
@@ -144,9 +154,12 @@ help: ## Display available targets
 	@echo "This Makefile provides targets for catalog management operations."
 	@echo ""
 	@echo "Variables:"
-	@echo "  CATALOG_TEMPLATE_FILE    Path to catalog template file (default: $(CATALOG_TEMPLATE_FILE))"
+	@echo "  CATALOG_TEMPLATE_FILE_INPUT    Path to input catalog template file (default: $(CATALOG_TEMPLATE_FILE_INPUT))"
+	@echo "  CATALOG_TEMPLATE_FILE_OUTPUT   Path to output catalog template file (default: $(CATALOG_TEMPLATE_FILE_OUTPUT))"
 	@echo "  BUNDLE_BUILDS_FILE       Path to bundle builds file (default: $(BUNDLE_BUILDS_FILE))"
 	@echo "  CATALOG_FILE             Path to catalog file (default: $(CATALOG_FILE))"
+	@echo "  CATALOG_TEMPLATE_KONFLUX_INPUT   Input catalog template for Konflux operations (default: $(CATALOG_TEMPLATE_KONFLUX_INPUT))"
+	@echo "  CATALOG_TEMPLATE_KONFLUX_OUTPUT  Output catalog template for Konflux operations (default: $(CATALOG_TEMPLATE_KONFLUX_OUTPUT))"
 	@echo "  PACKAGE_NAME_KONFLUX     Package name for Konflux operations (default: $(PACKAGE_NAME_KONFLUX))"
 	@echo "  TOOL_DIR                 Directory for downloaded tools (default: $(TOOL_DIR))"
 	@echo "  OPERATOR_SDK_VERSION     Operator SDK version for downloads (default: $(OPERATOR_SDK_VERSION))"
@@ -162,7 +175,10 @@ help: ## Display available targets
 	@echo ""
 	@echo "Examples:"
 	@echo "  make update-catalog-template                              # Use default files"
+	@echo "  make update-catalog-template CATALOG_TEMPLATE_FILE_INPUT=input.yaml CATALOG_TEMPLATE_FILE_OUTPUT=output.yaml  # Separate input/output files"
 	@echo "  make validate-production-images CATALOG_FILE=my-catalog.yaml  # Use custom catalog"
+	@echo "  make konflux-validate-catalog-template-bundle            # Validate using default input/output"
+	@echo "  make konflux-validate-catalog-template-bundle CATALOG_TEMPLATE_KONFLUX_INPUT=input.yaml CATALOG_TEMPLATE_KONFLUX_OUTPUT=output.yaml  # Use custom input/output"
 	@echo "  make konflux-generate-catalog                             # Generate quay.io catalog"
 	@echo "  make konflux-generate-catalog-production                  # Generate registry.redhat.io catalog"
 	@echo "  make konflux-compare-catalog                              # Compare generated catalog with upstream FBC"

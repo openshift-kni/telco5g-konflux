@@ -21,7 +21,8 @@ check_preconditions() {
 parse_args() {
     echo "Parsing args..."
 
-    ARG_CATALOG_TEMPLATE_FILE=""
+    ARG_CATALOG_TEMPLATE_INPUT_FILE=""
+    ARG_CATALOG_TEMPLATE_OUTPUT_FILE=""
     ARG_BUNDLE_BUILDS_FILE=""
 
     while [[ $# -gt 0 ]]; do
@@ -36,12 +37,35 @@ parse_args() {
                     exit 1;
                 fi
 
-                ARG_CATALOG_TEMPLATE_FILE=$2
-                if [[ ! -f "$ARG_CATALOG_TEMPLATE_FILE" ]]; then
-                    echo "Error: file '$ARG_CATALOG_TEMPLATE_FILE' does not exist." >&2
+                ARG_CATALOG_TEMPLATE_INPUT_FILE=$2
+                if [[ ! -f "$ARG_CATALOG_TEMPLATE_INPUT_FILE" ]]; then
+                    echo "Error: file '$ARG_CATALOG_TEMPLATE_INPUT_FILE' does not exist." >&2
                     exit 1
                 fi
 
+                shift 2
+                ;;
+            --set-catalog-template-input-file)
+                if [ -z "$2" ]; then
+                    echo "Error: --set-catalog-template-input-file requires a file " >&2;
+                    exit 1;
+                fi
+
+                ARG_CATALOG_TEMPLATE_INPUT_FILE=$2
+                if [[ ! -f "$ARG_CATALOG_TEMPLATE_INPUT_FILE" ]]; then
+                    echo "Error: file '$ARG_CATALOG_TEMPLATE_INPUT_FILE' does not exist." >&2
+                    exit 1
+                fi
+
+                shift 2
+                ;;
+            --set-catalog-template-output-file)
+                if [ -z "$2" ]; then
+                    echo "Error: --set-catalog-template-output-file requires a file " >&2;
+                    exit 1;
+                fi
+
+                ARG_CATALOG_TEMPLATE_OUTPUT_FILE=$2
                 shift 2
                 ;;
             --set-bundle-builds-file)
@@ -66,10 +90,15 @@ parse_args() {
         esac
     done
 
-    # Ensure both files are provided
-    if [ -z "$ARG_CATALOG_TEMPLATE_FILE" ]; then
-        echo "Error: --set-catalog-template-file is required" >&2
+    # Ensure input file is provided
+    if [ -z "$ARG_CATALOG_TEMPLATE_INPUT_FILE" ]; then
+        echo "Error: --set-catalog-template-file or --set-catalog-template-input-file is required" >&2
         exit 1
+    fi
+
+    # If output file is not provided, use input file (backward compatibility)
+    if [ -z "$ARG_CATALOG_TEMPLATE_OUTPUT_FILE" ]; then
+        ARG_CATALOG_TEMPLATE_OUTPUT_FILE="$ARG_CATALOG_TEMPLATE_INPUT_FILE"
     fi
 
     if [ -z "$ARG_BUNDLE_BUILDS_FILE" ]; then
@@ -82,26 +111,32 @@ parse_args() {
 }
 
 validate_catalog_template_file() {
-    echo "Validating catalog template file..."
+    echo "Validating catalog template input file..."
 
     # validate .entries exists
-    if ! yq e '.entries | type == "!!seq"' "$ARG_CATALOG_TEMPLATE_FILE" >/dev/null; then
-        echo "Error: .entries in $ARG_CATALOG_TEMPLATE_FILE is not a valid array." >&2
+    if ! yq e '.entries | type == "!!seq"' "$ARG_CATALOG_TEMPLATE_INPUT_FILE" >/dev/null; then
+        echo "Error: .entries in $ARG_CATALOG_TEMPLATE_INPUT_FILE is not a valid array." >&2
         exit 1
     fi
 
     # validate the last entry has an image field
-    image_field=$(yq e ".entries[-1].image" "$ARG_CATALOG_TEMPLATE_FILE")
+    image_field=$(yq e ".entries[-1].image" "$ARG_CATALOG_TEMPLATE_INPUT_FILE")
     if [ -z "$image_field" ] || [ "$image_field" = "null" ]; then
-        echo "Error: Last element in .entries array of $ARG_CATALOG_TEMPLATE_FILE is missing the image field or it is null." >&2
+        echo "Error: Last element in .entries array of $ARG_CATALOG_TEMPLATE_INPUT_FILE is missing the image field or it is null." >&2
     fi
 
-    echo "Validating catalog template file completed!"
+    echo "Validating catalog template input file completed!"
     return 0
 }
 
 update_catalog_template_file() {
     echo "Updating catalog template file..."
+
+    # Copy input to output if they are different files
+    if [ "$ARG_CATALOG_TEMPLATE_INPUT_FILE" != "$ARG_CATALOG_TEMPLATE_OUTPUT_FILE" ]; then
+        echo "Copying catalog template from $ARG_CATALOG_TEMPLATE_INPUT_FILE to $ARG_CATALOG_TEMPLATE_OUTPUT_FILE"
+        cp "$ARG_CATALOG_TEMPLATE_INPUT_FILE" "$ARG_CATALOG_TEMPLATE_OUTPUT_FILE"
+    fi
 
     # Extract bundle
     local bundle_quay
@@ -111,9 +146,9 @@ update_catalog_template_file() {
         exit 1
     fi
 
-    # Override the last entry with the quay build
-    yq e -i ".entries[-1].image = \"$bundle_quay\"" "$ARG_CATALOG_TEMPLATE_FILE"
-    echo "Updating catalog template file: $ARG_CATALOG_TEMPLATE_FILE with bundle: $bundle_quay"
+    # Override the last entry with the quay build in the output file
+    yq e -i ".entries[-1].image = \"$bundle_quay\"" "$ARG_CATALOG_TEMPLATE_OUTPUT_FILE"
+    echo "Updated catalog template file: $ARG_CATALOG_TEMPLATE_OUTPUT_FILE with bundle: $bundle_quay"
 
     echo "Updating catalog template file completed!"
     return 0
@@ -132,13 +167,22 @@ NAME
    $SCRIPT_NAME - update a catalog template based on the bundle builds to be included
 SYNOPSIS
    $SCRIPT_NAME --set-catalog-template-file FILE --set-bundle-builds-file FILE
+   $SCRIPT_NAME --set-catalog-template-input-file FILE --set-catalog-template-output-file FILE --set-bundle-builds-file FILE
 EXAMPLES
-   - Update the catalog template '.konflux/catalog/catalog-template.in.yaml' based on the bundles builds on 'bundle.builds.in.yaml':
+   - Update the catalog template '.konflux/catalog/catalog-template.in.yaml' based on the bundles builds on 'bundle.builds.in.yaml' (backward compatibility):
      $ $SCRIPT_NAME --set-catalog-template-file .konflux/catalog/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
+   - Update catalog template using separate input and output files:
+     $ $SCRIPT_NAME --set-catalog-template-input-file .konflux/catalog/catalog-template.in.yaml --set-catalog-template-output-file .konflux/catalog/catalog-template.out.yaml --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
 DESCRIPTION
+   This script updates a catalog template file by replacing the last bundle entry with the bundle specified in the bundle builds file.
+   It supports both single-file mode (backward compatibility) and separate input/output file mode.
 ARGS
    --set-catalog-template-file FILE
-      Set the catalog template file.
+      Set the catalog template file (input and output, for backward compatibility).
+   --set-catalog-template-input-file FILE
+      Set the input catalog template file.
+   --set-catalog-template-output-file FILE
+      Set the output catalog template file.
    --set-bundle-builds-file FILE
       Set the bundle builds file.
    --help
