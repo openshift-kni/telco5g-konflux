@@ -1,5 +1,5 @@
 ---
-name: Makefile CI
+name: Makefile (make all)
 
 "on":
   push:
