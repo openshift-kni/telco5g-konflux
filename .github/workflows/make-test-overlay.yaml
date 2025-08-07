@@ -1,5 +1,5 @@
 ---
-name: Test Overlay CI
+name: Makefile (test overlay script)
 
 "on":
   push:

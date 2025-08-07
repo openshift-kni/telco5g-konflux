@@ -1,5 +1,5 @@
 ---
-name: Makefile CI
+name: Makefile (test download scripts)
 
 "on":
   push:
