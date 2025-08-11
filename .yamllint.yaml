@@ -1,5 +1,5 @@
 ---
-extends: default
-
-rules:
-  line-length: disable
+yamllint:
+  extends: default
+  rules:
+    line-length: disable
