@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # This script automates the download and installation of yamllint, a linter for YAML files.
+# It checks if yamllint is available in the local install directory with the exact required version.
 # It creates a local Python virtual environment and installs yamllint via pip, then creates
 # a wrapper script to execute yamllint from the virtual environment.
 
@@ -23,8 +24,8 @@ Usage: $0 [OPTIONS] [VERSION]
 Downloads and installs yamllint, a linter for YAML files.
 
 Arguments:
-    VERSION               Version to install (default: ${DEFAULT_VERSION})
-                         Format: X.Y.Z (e.g., 1.37.1)
+    VERSION              Exact version required (default: ${DEFAULT_VERSION})
+                         Format: X.Y.Z (e.g. 1.37.1)
 
 Options:
     -d, --install-dir DIR Install directory (default: ${DEFAULT_INSTALL_DIR})
@@ -34,8 +35,8 @@ Environment Variables:
     INSTALL_DIR           Install directory (overridden by -d/--install-dir)
 
 Examples:
-    $0                                   # Install default version to default directory
-    $0 1.35.1                            # Install specific version to default directory
+    $0                                   # Ensure default version is available locally
+    $0 1.35.1                            # Ensure exact version 1.35.1 is available locally
     $0 -d /usr/local/bin 1.35.1          # Install specific version to custom directory
     $0 --install-dir /tmp/tools          # Install default version to custom directory
     INSTALL_DIR=/opt/bin $0              # Install using environment variable
@@ -106,60 +107,80 @@ main() {
     local install_path="${install_dir}/yamllint"
     local venv_dir="${install_dir}/.yamllint-venv"
 
-    # Check if yamllint is not already available in the system's PATH.
-    if ! which yamllint > /dev/null 2>&1; then
-        echo "Installing yamllint tool"
+    echo "Checking for yamllint with exact version ${version} in local install directory..."
 
-        # Check for Python
-        local python_cmd
-        python_cmd=$(check_python)
-        echo "Using Python: $python_cmd"
+    # Check if yamllint exists in local install directory with exact version
+    if [[ -x "$install_path" && -d "$venv_dir" ]]; then
+        echo "Found yamllint in local install directory: $install_path"
 
-        # Create install directory
-        echo "Creating directory '${install_dir}'"
-        mkdir -p "${install_dir}"
+        # Check if the version matches exactly
+        local local_version
+        if local_version=$("$install_path" --version 2>/dev/null | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*' | head -1); then
+            echo "Local yamllint version: $local_version"
 
-        # Create virtual environment
-        echo "Creating Python virtual environment in '${venv_dir}'"
-        "$python_cmd" -m venv "${venv_dir}"
-
-        # Activate virtual environment and install yamllint with specific version
-        echo "Installing yamllint version ${version}"
-        if ! "${venv_dir}/bin/pip" install "yamllint==${version}" > /dev/null 2>&1; then
-            echo "ERROR: Failed to install yamllint version ${version}"
-            echo "Available versions can be found at: https://pypi.org/project/yamllint/"
-            rm -rf "${venv_dir}"
-            exit 1
+            if [[ "$local_version" == "$version" ]]; then
+                echo "Local yamllint version $local_version matches required version $version"
+                return 0
+            else
+                echo "Local yamllint version $local_version does not match required version $version"
+            fi
+        else
+            echo "Could not determine local yamllint version"
         fi
+    else
+        echo "yamllint not found in local install directory: $install_path"
+    fi
 
-        # Create wrapper script
-        echo "Creating yamllint wrapper script at '${install_path}'"
-        cat > "${install_path}" << EOF
+    # No exact version match found, proceed with installation
+    echo "Installing yamllint ${version}..."
+
+    # Check for Python
+    local python_cmd
+    python_cmd=$(check_python)
+    echo "Using Python: $python_cmd"
+
+    # Create install directory
+    echo "Creating directory '${install_dir}'"
+    mkdir -p "${install_dir}"
+
+    # Create virtual environment
+    echo "Creating Python virtual environment in '${venv_dir}'"
+    "$python_cmd" -m venv "${venv_dir}"
+
+    # Activate virtual environment and install yamllint with specific version
+    echo "Installing yamllint version ${version}"
+    if ! "${venv_dir}/bin/pip" install "yamllint==${version}" > /dev/null 2>&1; then
+        echo "ERROR: Failed to install yamllint version ${version}"
+        echo "Available versions can be found at: https://pypi.org/project/yamllint/"
+        rm -rf "${venv_dir}"
+        exit 1
+    fi
+
+    # Create wrapper script
+    echo "Creating yamllint wrapper script at '${install_path}'"
+    cat > "${install_path}" << EOF
 #!/usr/bin/env bash
 # yamllint wrapper script generated by download-yamllint.sh
 exec "${venv_dir}/bin/yamllint" "\$@"
 EOF
-        chmod +x "${install_path}"
+    chmod +x "${install_path}"
 
-        # Verify the installation was successful
-        local actual_version
-        if ! actual_version=$("${install_path}" --version 2>&1 | head -1); then
-            echo "ERROR: Failed to install yamllint. Version check failed."
-            rm -rf "${venv_dir}"
-            rm -f "${install_path}"
-            exit 1
-        fi
-
-        # Check if the installed version matches what we requested
-        if ! echo "$actual_version" | grep -q "${version}"; then
-            echo "WARNING: Requested version ${version} but got: ${actual_version}"
-        fi
-
-        echo "yamllint version ${version} installed successfully to ${install_path}"
-        echo "Installed version: ${actual_version}"
-    else
-        echo "yamllint is already installed at: $(which yamllint)"
+    # Verify the installation was successful
+    local actual_version
+    if ! actual_version=$("${install_path}" --version 2>&1 | head -1); then
+        echo "ERROR: Failed to install yamllint. Version check failed."
+        rm -rf "${venv_dir}"
+        rm -f "${install_path}"
+        exit 1
     fi
+
+    # Check if the installed version matches what we requested
+    if ! echo "$actual_version" | grep -q "${version}"; then
+        echo "WARNING: Requested version ${version} but got: ${actual_version}"
+    fi
+
+    echo "yamllint version ${version} installed successfully to ${install_path}"
+    echo "Installed version: ${actual_version}"
 }
 
 # Execute the main function, passing along any script arguments.

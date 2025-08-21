@@ -152,7 +152,7 @@ test_old_version_when_newer_exists() {
     # Create fake newer version
     create_fake_yq_binary "$VALID_VERSION_NEW" "$test_dir/yq"
 
-    # Test should succeed without downloading (existing version meets requirement)
+    # Test should succeed and download exact version requested (replaces newer version)
     if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_OLD" >> "$TEST_LOG_FILE" 2>&1; then
         if [[ -x "$test_dir/yq" ]]; then
             log_test_pass "Request old version when newer version exists"

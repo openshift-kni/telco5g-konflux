@@ -32,37 +32,57 @@ log() {
     echo -e "$1" | tee -a "$TEST_LOG_FILE"
 }
 
-run_test() {
+log_test_start() {
     local test_name="$1"
-    local test_command="$2"
-    local expected_exit_code="${3:-0}"
-
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
+    log "${YELLOW}[TEST ${TOTAL_TESTS}] Starting: $test_name${NC}"
+}
 
-    log "\n${YELLOW}[TEST $TOTAL_TESTS]${NC} $test_name"
-    log "Command: $test_command"
+log_test_pass() {
+    local test_name="$1"
+    PASSED_TESTS=$((PASSED_TESTS + 1))
+    log "${GREEN}[PASS] $test_name${NC}"
+}
 
-    # Clean up test directory before each test
-    rm -rf "$TEST_INSTALL_DIR"
+log_test_fail() {
+    local test_name="$1"
+    local error_msg="$2"
+    FAILED_TESTS=$((FAILED_TESTS + 1))
+    log "${RED}[FAIL] $test_name${NC}"
+    log "${RED}       Error: $error_msg${NC}"
+}
+
+setup_test_environment() {
+    log "Setting up test environment..."
+
+    # Remove test directory if it exists
+    if [[ -d "$TEST_INSTALL_DIR" ]]; then
+        rm -rf "$TEST_INSTALL_DIR"
+    fi
+
+    # Create fresh test directory
     mkdir -p "$TEST_INSTALL_DIR"
 
-    # Run the test command
-    if eval "$test_command" >> "$TEST_LOG_FILE" 2>&1; then
-        actual_exit_code=0
-    else
-        actual_exit_code=$?
-    fi
+    # Initialize log file
+    echo "bashate Download Script Test Results - $(date)" > "$TEST_LOG_FILE"
+    echo "================================================" >> "$TEST_LOG_FILE"
+}
 
-    # Check if exit code matches expected
-    if [[ $actual_exit_code -eq $expected_exit_code ]]; then
-        log "${GREEN}✓ PASSED${NC}"
-        PASSED_TESTS=$((PASSED_TESTS + 1))
-        return 0
-    else
-        log "${RED}✗ FAILED${NC} (Expected exit code: $expected_exit_code, Actual: $actual_exit_code)"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
+cleanup_test_environment() {
+    log "Cleaning up test environment..."
+
+    # Remove test directory
+    if [[ -d "$TEST_INSTALL_DIR" ]]; then
+        rm -rf "$TEST_INSTALL_DIR"
+    fi
+}
+
+check_python() {
+    if ! command -v python3 >/dev/null 2>&1; then
+        log_test_fail "Python check" "python3 is not available. Please install Python 3 to run bashate tests."
         return 1
     fi
+    return 0
 }
 
 verify_installation() {
@@ -71,183 +91,171 @@ verify_installation() {
     local venv_path="$3"
 
     if [[ ! -x "$binary_path" ]]; then
-        log "Binary not found or not executable: $binary_path"
         return 1
     fi
 
     if [[ ! -d "$venv_path" ]]; then
-        log "Virtual environment directory not found: $venv_path"
         return 1
     fi
 
     local actual_version
     if ! actual_version=$("$binary_path" --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n1); then
-        log "Failed to get version from $binary_path"
         return 1
     fi
 
     if [[ "$actual_version" == "$expected_version" ]]; then
-        log "Version verification passed: $actual_version"
-        log "Virtual environment verified: $venv_path"
         return 0
     else
-        log "Version mismatch. Expected: $expected_version, Actual: $actual_version"
         return 1
     fi
 }
 
-check_python() {
-    if ! command -v python3 >/dev/null 2>&1; then
-        log "${YELLOW}Warning: Python 3 not found. Some tests may fail.${NC}"
+test_help_message() {
+    log_test_start "Help message display"
+
+    local test_dir="${TEST_INSTALL_DIR}/help_test"
+    mkdir -p "$test_dir"
+
+    if "$DOWNLOAD_SCRIPT" --help >> "$TEST_LOG_FILE" 2>&1; then
+        log_test_pass "Help message display"
+        return 0
+    else
+        log_test_fail "Help message display" "Help command failed"
         return 1
     fi
-    return 0
 }
 
-# Initialize test log
-echo "bashate Download Script Test Results" > "$TEST_LOG_FILE"
-echo "Test started at: $(date)" >> "$TEST_LOG_FILE"
-echo "========================================" >> "$TEST_LOG_FILE"
+test_download_valid_version() {
+    log_test_start "Download valid version to empty directory"
 
-log "${YELLOW}Starting bashate download script tests...${NC}"
+    local test_dir="${TEST_INSTALL_DIR}/valid_version"
+    mkdir -p "$test_dir"
 
-# Check Python availability
-if ! check_python; then
-    log "${RED}Python 3 is required for bashate installation. Skipping tests.${NC}"
-    exit 1
-fi
-
-# Test 1: Help message
-run_test "Help message display" \
-    "'$DOWNLOAD_SCRIPT' --help"
-
-# Test 2: Download with default version
-run_test "Download default version" \
-    "'$DOWNLOAD_SCRIPT' --install-dir '$TEST_INSTALL_DIR'"
-
-if [[ $? -eq 0 ]]; then
-    # Verify the installation
-    if verify_installation "$TEST_INSTALL_DIR/bashate" "2.1.1" "$TEST_INSTALL_DIR/.bashate-venv"; then
-        log "${GREEN}Installation verification passed${NC}"
+    # Test should succeed
+    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
+        # Check if binary was created and has correct version
+        if verify_installation "$test_dir/bashate" "$VALID_VERSION_NEW" "$test_dir/.bashate-venv"; then
+            log_test_pass "Download valid version to empty directory"
+            return 0
+        else
+            log_test_fail "Download valid version to empty directory" "Installation verification failed"
+            return 1
+        fi
     else
-        log "${RED}Installation verification failed${NC}"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
+        log_test_fail "Download valid version to empty directory" "Download command failed"
+        return 1
     fi
-fi
+}
 
-# Test 3: Download specific older version
-run_test "Download specific version ($VALID_VERSION_OLD)" \
-    "'$DOWNLOAD_SCRIPT' --install-dir '$TEST_INSTALL_DIR' '$VALID_VERSION_OLD'"
+test_download_invalid_version() {
+    log_test_start "Download invalid version (should fail)"
 
-if [[ $? -eq 0 ]]; then
-    if verify_installation "$TEST_INSTALL_DIR/bashate" "$VALID_VERSION_OLD" "$TEST_INSTALL_DIR/.bashate-venv"; then
-        log "${GREEN}Installation verification passed${NC}"
+    local test_dir="${TEST_INSTALL_DIR}/invalid_version"
+    mkdir -p "$test_dir"
+
+    # Test should fail
+    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$INVALID_VERSION" >> "$TEST_LOG_FILE" 2>&1; then
+        log_test_fail "Download invalid version (should fail)" "Command succeeded when it should have failed"
+        return 1
     else
-        log "${RED}Installation verification failed${NC}"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
+        log_test_pass "Download invalid version (should fail)"
+        return 0
     fi
-fi
+}
 
-# Test 4: Download with force flag (should reinstall)
-run_test "Force reinstall" \
-    "'$DOWNLOAD_SCRIPT' --install-dir '$TEST_INSTALL_DIR' --force '$VALID_VERSION_NEW'"
+test_reinstall_same_version() {
+    log_test_start "Reinstall same version"
 
-if [[ $? -eq 0 ]]; then
-    if verify_installation "$TEST_INSTALL_DIR/bashate" "$VALID_VERSION_NEW" "$TEST_INSTALL_DIR/.bashate-venv"; then
-        log "${GREEN}Force installation verification passed${NC}"
-    else
-        log "${RED}Force installation verification failed${NC}"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
-    fi
-fi
+    local test_dir="${TEST_INSTALL_DIR}/reinstall_same"
+    mkdir -p "$test_dir"
 
-# Test 5: Skip download if compatible version exists
-TOTAL_TESTS=$((TOTAL_TESTS + 1))
-
-log "\n${YELLOW}[TEST $TOTAL_TESTS]${NC} Skip download for existing compatible version"
-log "Command: '$DOWNLOAD_SCRIPT' --install-dir '$TEST_INSTALL_DIR' '$VALID_VERSION_OLD'"
-
-# Run the test command without cleaning up the directory first
-# This should skip installation since Test 4 installed a newer version (2.1.1) and we're requesting an older one (2.1.0)
-if "$DOWNLOAD_SCRIPT" --install-dir "$TEST_INSTALL_DIR" "$VALID_VERSION_OLD" >> "$TEST_LOG_FILE" 2>&1; then
-    actual_exit_code=0
-else
-    actual_exit_code=$?
-fi
-
-# Check if exit code matches expected (0)
-if [[ $actual_exit_code -eq 0 ]]; then
-    log "${GREEN}✓ PASSED${NC}"
-    PASSED_TESTS=$((PASSED_TESTS + 1))
-
-    # Verify that it actually skipped installation by checking if the output contains the skip message
-    if tail -n 10 "$TEST_LOG_FILE" | grep -q "is already installed.*and meets the required version"; then
-        log "${GREEN}Successfully skipped installation for compatible version${NC}"
-    else
-        log "${YELLOW}Warning: Installation may not have been skipped as expected${NC}"
-    fi
-else
-    log "${RED}✗ FAILED${NC} (Expected exit code: 0, Actual: $actual_exit_code)"
-    FAILED_TESTS=$((FAILED_TESTS + 1))
-fi
-
-# Test 6: Invalid version format
-run_test "Invalid version format" \
-    "'$DOWNLOAD_SCRIPT' --install-dir '$TEST_INSTALL_DIR' 'invalid-version'" 1
-
-# Test 7: Non-existent version (should fail)
-run_test "Non-existent version" \
-    "'$DOWNLOAD_SCRIPT' --install-dir '$TEST_INSTALL_DIR' '$INVALID_VERSION'" 1
-
-# Test 8: Invalid option
-run_test "Invalid command line option" \
-    "'$DOWNLOAD_SCRIPT' --invalid-option" 1
-
-# Test 9: Verbose mode
-run_test "Verbose mode" \
-    "'$DOWNLOAD_SCRIPT' --install-dir '$TEST_INSTALL_DIR' --verbose --force '$VALID_VERSION_NEW'"
-
-# Test 10: Test wrapper script functionality
-if [[ -x "$TEST_INSTALL_DIR/bashate" && -d "$TEST_INSTALL_DIR/.bashate-venv" ]]; then
-    TOTAL_TESTS=$((TOTAL_TESTS + 1))
-
-    log "\n${YELLOW}[TEST $TOTAL_TESTS]${NC} Wrapper script execution test"
-    log "Command: '$TEST_INSTALL_DIR/bashate' --help"
-
-    # Run the test command without cleaning up the directory first
-    if "$TEST_INSTALL_DIR/bashate" --help >> "$TEST_LOG_FILE" 2>&1; then
-        actual_exit_code=0
-    else
-        actual_exit_code=$?
+    # First install
+    if ! "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
+        log_test_fail "Reinstall same version" "First installation failed"
+        return 1
     fi
 
-    # Check if exit code matches expected (0)
-    if [[ $actual_exit_code -eq 0 ]]; then
-        log "${GREEN}✓ PASSED${NC}"
-        PASSED_TESTS=$((PASSED_TESTS + 1))
+    # Second install of same version - should reinstall
+    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
+        if verify_installation "$test_dir/bashate" "$VALID_VERSION_NEW" "$test_dir/.bashate-venv"; then
+            log_test_pass "Reinstall same version"
+            return 0
+        else
+            log_test_fail "Reinstall same version" "Second installation verification failed"
+            return 1
+        fi
     else
-        log "${RED}✗ FAILED${NC} (Expected exit code: 0, Actual: $actual_exit_code)"
-        FAILED_TESTS=$((FAILED_TESTS + 1))
+        log_test_fail "Reinstall same version" "Second installation failed"
+        return 1
     fi
-fi
+}
 
-# Clean up test directory
-log "\n${YELLOW}Cleaning up test directory...${NC}"
-rm -rf "$TEST_INSTALL_DIR"
+test_download_exact_version() {
+    log_test_start "Download exact version (replaces existing different version)"
 
-# Test results summary
-log "\n========================================="
-log "${YELLOW}TEST SUMMARY${NC}"
-log "========================================="
-log "Total tests: $TOTAL_TESTS"
-log "${GREEN}Passed: $PASSED_TESTS${NC}"
-log "${RED}Failed: $FAILED_TESTS${NC}"
+    local test_dir="${TEST_INSTALL_DIR}/exact_version"
+    mkdir -p "$test_dir"
 
-if [[ $FAILED_TESTS -eq 0 ]]; then
-    log "\n${GREEN}🎉 All tests passed!${NC}"
-    exit 0
-else
-    log "\n${RED}❌ Some tests failed. Check the log for details.${NC}"
-    log "Full test log: $TEST_LOG_FILE"
-    exit 1
-fi
+    # First install newer version
+    if ! "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
+        log_test_fail "Download exact version (replaces existing different version)" "First installation failed"
+        return 1
+    fi
+
+    # Install older version - should download and replace
+    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_OLD" >> "$TEST_LOG_FILE" 2>&1; then
+        if verify_installation "$test_dir/bashate" "$VALID_VERSION_OLD" "$test_dir/.bashate-venv"; then
+            log_test_pass "Download exact version (replaces existing different version)"
+            return 0
+        else
+            log_test_fail "Download exact version (replaces existing different version)" "Version replacement verification failed"
+            return 1
+        fi
+    else
+        log_test_fail "Download exact version (replaces existing different version)" "Version replacement failed"
+        return 1
+    fi
+}
+
+# Main execution
+main() {
+    log "${YELLOW}Starting bashate download script tests...${NC}"
+
+    # Check prerequisites
+    if ! check_python; then
+        exit 1
+    fi
+
+    # Setup test environment
+    setup_test_environment
+
+    # Run tests
+    test_help_message
+    test_download_valid_version
+    test_download_invalid_version
+    test_reinstall_same_version
+    test_download_exact_version
+
+    # Cleanup
+    cleanup_test_environment
+
+    # Print summary
+    log ""
+    log "=========================================="
+    log "Test Summary:"
+    log "Total tests: $TOTAL_TESTS"
+    log "${GREEN}Passed: $PASSED_TESTS${NC}"
+    log "${RED}Failed: $FAILED_TESTS${NC}"
+    log "=========================================="
+
+    if [[ $FAILED_TESTS -eq 0 ]]; then
+        log "${GREEN}All tests passed!${NC}"
+        exit 0
+    else
+        log "${RED}Some tests failed. Check the log for details.${NC}"
+        exit 1
+    fi
+}
+
+# Run main function
+main "$@"

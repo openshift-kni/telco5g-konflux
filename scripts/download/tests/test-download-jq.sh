@@ -128,21 +128,15 @@ test_newer_version_when_old_exists() {
     local test_dir="${TEST_INSTALL_DIR}/newer_when_old"
     mkdir -p "$test_dir"
 
-    # Note: jq script doesn't check versions, it only checks if jq exists in PATH
-    # So we need to test without jq in PATH
-    if ! command -v jq > /dev/null 2>&1; then
-        # Test should succeed and download
-        if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
-            if [[ -x "$test_dir/jq" ]]; then
-                log_test_pass "Download newer version when old version exists"
-            else
-                log_test_fail "Download newer version when old version exists" "Binary not created"
-            fi
+    # Test should succeed and download (script ignores PATH, only checks local directory)
+    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
+        if [[ -x "$test_dir/jq" ]]; then
+            log_test_pass "Download newer version when old version exists"
         else
-            log_test_fail "Download newer version when old version exists" "Script failed"
+            log_test_fail "Download newer version when old version exists" "Binary not created"
         fi
     else
-        log_test_pass "Download newer version when old version exists (jq found in PATH, skipping download)"
+        log_test_fail "Download newer version when old version exists" "Script failed"
     fi
 }
 
@@ -152,20 +146,15 @@ test_old_version_when_newer_exists() {
     local test_dir="${TEST_INSTALL_DIR}/old_when_newer"
     mkdir -p "$test_dir"
 
-    # Note: jq script doesn't check versions, it only checks if jq exists in PATH
-    if ! command -v jq > /dev/null 2>&1; then
-        # Test should succeed and download
-        if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_OLD" >> "$TEST_LOG_FILE" 2>&1; then
-            if [[ -x "$test_dir/jq" ]]; then
-                log_test_pass "Request old version when newer version exists"
-            else
-                log_test_fail "Request old version when newer version exists" "Binary not created"
-            fi
+    # Test should succeed and download (script ignores PATH, only checks local directory)
+    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_OLD" >> "$TEST_LOG_FILE" 2>&1; then
+        if [[ -x "$test_dir/jq" ]]; then
+            log_test_pass "Request old version when newer version exists"
         else
-            log_test_fail "Request old version when newer version exists" "Script failed"
+            log_test_fail "Request old version when newer version exists" "Binary not created"
         fi
     else
-        log_test_pass "Request old version when newer version exists (jq found in PATH, skipping download)"
+        log_test_fail "Request old version when newer version exists" "Script failed"
     fi
 }
 
@@ -202,24 +191,29 @@ test_missing_install_dir_argument() {
     fi
 }
 
-test_skip_when_jq_in_path() {
-    log_test_start "Test skip download when jq is in PATH"
+test_download_ignores_path() {
+    log_test_start "Test download ignores jq in PATH"
 
-    local test_dir="${TEST_INSTALL_DIR}/skip_test"
+    local test_dir="${TEST_INSTALL_DIR}/path_ignore_test"
     mkdir -p "$test_dir"
 
     # Create fake jq in PATH by adding test directory to PATH temporarily
-    create_fake_jq_binary "$VALID_VERSION_NEW" "$test_dir/jq"
+    create_fake_jq_binary "$VALID_VERSION_OLD" "$test_dir/jq"
 
     # Temporarily add test directory to PATH
     local old_path="$PATH"
     export PATH="$test_dir:$PATH"
 
-    # Test should succeed but skip download
-    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
-        log_test_pass "Test skip download when jq is in PATH"
+    # Test should succeed and download to local directory (ignoring PATH)
+    local install_dir="${TEST_INSTALL_DIR}/path_ignore_install"
+    if "$DOWNLOAD_SCRIPT" --install-dir "$install_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
+        if [[ -x "$install_dir/jq" ]]; then
+            log_test_pass "Test download ignores jq in PATH"
+        else
+            log_test_fail "Test download ignores jq in PATH" "Local binary not created"
+        fi
     else
-        log_test_fail "Test skip download when jq is in PATH" "Script failed"
+        log_test_fail "Test download ignores jq in PATH" "Script failed"
     fi
 
     # Restore PATH
@@ -264,7 +258,7 @@ main() {
     test_help_option
     test_invalid_option
     test_missing_install_dir_argument
-    test_skip_when_jq_in_path
+    test_download_ignores_path
 
     cleanup_test_environment
 

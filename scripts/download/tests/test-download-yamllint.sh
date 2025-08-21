@@ -213,27 +213,21 @@ test_missing_install_dir_argument() {
     fi
 }
 
-test_skip_when_yamllint_in_path() {
-    log_test_start "Test skip download when yamllint is in PATH"
-
-    # Only run this test if yamllint is not already in PATH
-    if command -v yamllint > /dev/null 2>&1; then
-        log_test_pass "Test skip download when yamllint is in PATH (yamllint already in PATH)"
-        return
-    fi
+test_download_ignores_path() {
+    log_test_start "Test download ignores yamllint in PATH"
 
     if ! check_python_available; then
-        log_test_pass "Test skip download when yamllint is in PATH (skipped - no Python)"
+        log_test_pass "Test download ignores yamllint in PATH (skipped - no Python)"
         return
     fi
 
-    local test_dir="${TEST_INSTALL_DIR}/skip_test"
+    local test_dir="${TEST_INSTALL_DIR}/path_ignore_test"
     mkdir -p "$test_dir"
 
     # Create fake yamllint in PATH by adding test directory to PATH temporarily
     cat > "$test_dir/yamllint" << EOF
 #!/bin/bash
-echo "yamllint 1.37.1"
+echo "yamllint 1.35.0"
 EOF
     chmod +x "$test_dir/yamllint"
 
@@ -241,11 +235,16 @@ EOF
     local old_path="$PATH"
     export PATH="$test_dir:$PATH"
 
-    # Test should succeed but skip download
-    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
-        log_test_pass "Test skip download when yamllint is in PATH"
+    # Test should succeed and download to local directory (ignoring PATH)
+    local install_dir="${TEST_INSTALL_DIR}/path_ignore_install"
+    if "$DOWNLOAD_SCRIPT" --install-dir "$install_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
+        if [[ -x "$install_dir/yamllint" ]]; then
+            log_test_pass "Test download ignores yamllint in PATH"
+        else
+            log_test_fail "Test download ignores yamllint in PATH" "Local binary not created"
+        fi
     else
-        log_test_fail "Test skip download when yamllint is in PATH" "Script failed"
+        log_test_fail "Test download ignores yamllint in PATH" "Script failed"
     fi
 
     # Restore PATH
@@ -311,7 +310,7 @@ main() {
     test_help_option
     test_invalid_option
     test_missing_install_dir_argument
-    test_skip_when_yamllint_in_path
+    test_download_ignores_path
     test_custom_install_directory
 
     cleanup_test_environment

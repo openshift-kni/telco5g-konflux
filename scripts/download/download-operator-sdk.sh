@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 # This script automates the download and installation of operator-sdk from GitHub releases.
-# It first checks if operator-sdk is available in the system PATH or local install directory.
-# If found, it compares the version to ensure it meets the minimum requirement.
-# It only downloads if no suitable version is found.
+# It checks if operator-sdk is available in the local install directory with the exact required version.
+# It downloads and installs operator-sdk to the local directory if not found or if the version
+# doesn't exactly match the specified version. If an existing binary can't execute
+# (e.g., wrong architecture/OS), it will be automatically replaced.
 
 # Configure shell to exit immediately if a command exits with a non-zero status,
 # treat unset variables as an error, and fail a pipeline if any command fails.
@@ -26,11 +27,11 @@ usage() {
 Usage: $0 [OPTIONS] [OPERATOR_SDK_VERSION]
 
 Downloads and installs operator-sdk from GitHub releases if necessary.
-Checks system PATH and local install directory first, and only downloads
-if the existing version doesn't meet the minimum requirement.
+Checks local install directory first, and only downloads if the existing
+version doesn't exactly match the specified version.
 
 Arguments:
-    OPERATOR_SDK_VERSION  Minimum operator SDK version required (default: ${DEFAULT_OPERATOR_SDK_VERSION})
+    OPERATOR_SDK_VERSION Exact operator SDK version required (default: ${DEFAULT_OPERATOR_SDK_VERSION})
                          Format: X.Y.Z (e.g., 1.40.0) or vX.Y.Z (e.g., v1.40.0)
 
 Options:
@@ -39,12 +40,12 @@ Options:
 
 Environment Variables:
     INSTALL_DIR             Install directory (overridden by -d/--install-dir)
-    OPERATOR_SDK_VERSION    Minimum operator SDK version (overridden by positional argument)
+    OPERATOR_SDK_VERSION    Exact operator SDK version (overridden by positional argument)
 
 Examples:
-    $0                                    # Ensure default version is available
-    $0 1.40.0                            # Ensure minimum version 1.40.0 is available
-    $0 v1.40.0                           # Ensure minimum version 1.40.0 is available (with v prefix)
+    $0                                    # Ensure default version is available locally
+    $0 1.40.0                            # Ensure exact version 1.40.0 is available locally
+    $0 v1.40.0                           # Ensure exact version 1.40.0 is available locally (with v prefix)
     $0 -d /usr/local/bin 1.40.0          # Install to custom directory if needed
     $0 --install-dir /tmp/tools          # Install to custom directory if needed
     INSTALL_DIR=/opt/bin $0              # Install using environment variable
@@ -53,9 +54,9 @@ Examples:
 EOF
 }
 
-# Function to compare version strings
-# Returns 0 if version1 >= version2, 1 otherwise
-version_compare() {
+# Function to check if two version strings are exactly equal
+# Returns 0 if version1 == version2, 1 otherwise
+version_exact_match() {
     local version1="$1"
     local version2="$2"
 
@@ -63,11 +64,11 @@ version_compare() {
     version1="${version1#v}"
     version2="${version2#v}"
 
-    # Use sort -V to compare versions
-    if [[ "$(printf '%s\n' "$version1" "$version2" | sort -V | head -n1)" == "$version2" ]]; then
-        return 0  # version1 >= version2
+    # Check for exact match
+    if [[ "$version1" == "$version2" ]]; then
+        return 0  # versions match exactly
     else
-        return 1  # version1 < version2
+        return 1  # versions don't match
     fi
 }
 
@@ -131,29 +132,7 @@ main() {
     # Define the full path where the operator-sdk binary will be saved.
     local install_path="${install_dir}/operator-sdk"
 
-    echo "Checking for operator-sdk with minimum version v${operator_sdk_version}..."
-
-    # Check if operator-sdk is available in system PATH
-    local system_binary=""
-    if system_binary=$(command -v operator-sdk 2>/dev/null); then
-        echo "Found operator-sdk in system PATH: $system_binary"
-
-        local system_version
-        if system_version=$(get_operator_sdk_version "$system_binary"); then
-            echo "System operator-sdk version: $system_version"
-
-            if version_compare "$system_version" "v$operator_sdk_version"; then
-                echo "System operator-sdk version $system_version meets minimum requirement v$operator_sdk_version"
-                return 0
-            else
-                echo "System operator-sdk version $system_version is below minimum requirement v$operator_sdk_version"
-            fi
-        else
-            echo "Could not determine system operator-sdk version"
-        fi
-    else
-        echo "operator-sdk not found in system PATH"
-    fi
+    echo "Checking for operator-sdk with exact version v${operator_sdk_version} in local install directory..."
 
     # Check if operator-sdk exists in local install directory
     if [[ -x "$install_path" ]]; then
@@ -163,11 +142,11 @@ main() {
         if local_version=$(get_operator_sdk_version "$install_path"); then
             echo "Local operator-sdk version: $local_version"
 
-            if version_compare "$local_version" "v$operator_sdk_version"; then
-                echo "Local operator-sdk version $local_version meets minimum requirement v$operator_sdk_version"
+            if version_exact_match "$local_version" "v$operator_sdk_version"; then
+                echo "Local operator-sdk version $local_version matches required version v$operator_sdk_version"
                 return 0
             else
-                echo "Local operator-sdk version $local_version is below minimum requirement v$operator_sdk_version"
+                echo "Local operator-sdk version $local_version does not match required version v$operator_sdk_version"
             fi
         else
             echo "Could not determine local operator-sdk version"
@@ -176,7 +155,7 @@ main() {
         echo "operator-sdk not found in local install directory: $install_path"
     fi
 
-    # No suitable version found, proceed with download
+    # No exact version match found, proceed with download
     echo "Downloading operator-sdk v$operator_sdk_version..."
 
     # Detect the system's machine architecture (e.g., x86_64, aarch64).

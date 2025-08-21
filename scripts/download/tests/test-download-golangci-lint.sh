@@ -173,17 +173,17 @@ test_old_version_when_newer_exists() {
 
     # First install newer version
     if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
-        # Then try to request older version (should not downgrade)
+        # Then try to request older version (should download exact version requested)
         if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_OLD" >> "$TEST_LOG_FILE" 2>&1; then
-            # Check that newer version is still installed
+            # Check that older version is now installed (replaced newer version)
             local version_output
             if version_output=$("$test_dir/golangci-lint" --version 2>&1 | head -1); then
                 local extracted_version
                 extracted_version=$(extract_golangci_version "$version_output")
-                if [[ "$extracted_version" == "$VALID_VERSION_NEW" ]]; then
+                if [[ "$extracted_version" == "$VALID_VERSION_OLD" ]]; then
                     log_test_pass "Request old version when newer version exists"
                 else
-                    log_test_fail "Request old version when newer version exists" "Version was downgraded: expected $VALID_VERSION_NEW, got $extracted_version (full output: $version_output)"
+                    log_test_fail "Request old version when newer version exists" "Version not replaced: expected $VALID_VERSION_OLD, got $extracted_version (full output: $version_output)"
                 fi
             else
                 log_test_fail "Request old version when newer version exists" "Version check failed"
@@ -229,22 +229,16 @@ test_missing_install_dir_argument() {
     fi
 }
 
-test_skip_when_golangci_lint_in_path() {
-    log_test_start "Test skip download when golangci-lint is in PATH"
+test_download_ignores_path() {
+    log_test_start "Test download ignores golangci-lint in PATH"
 
-    # Only run this test if golangci-lint is not already in PATH
-    if command -v golangci-lint > /dev/null 2>&1; then
-        log_test_pass "Test skip download when golangci-lint is in PATH (golangci-lint already in PATH)"
-        return
-    fi
-
-    local test_dir="${TEST_INSTALL_DIR}/skip_test"
+    local test_dir="${TEST_INSTALL_DIR}/path_ignore_test"
     mkdir -p "$test_dir"
 
     # Create fake golangci-lint in PATH by adding test directory to PATH temporarily
     cat > "$test_dir/golangci-lint" << EOF
 #!/bin/bash
-echo "golangci-lint has version ${VALID_VERSION_NEW} built from 12345 on 2023-01-01T00:00:00Z"
+echo "golangci-lint has version ${VALID_VERSION_OLD} built from 12345 on 2023-01-01T00:00:00Z"
 EOF
     chmod +x "$test_dir/golangci-lint"
 
@@ -252,11 +246,16 @@ EOF
     local old_path="$PATH"
     export PATH="$test_dir:$PATH"
 
-    # Test should succeed but skip download
-    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
-        log_test_pass "Test skip download when golangci-lint is in PATH"
+    # Test should succeed and download to local directory (ignoring PATH)
+    local install_dir="${TEST_INSTALL_DIR}/path_ignore_install"
+    if "$DOWNLOAD_SCRIPT" --install-dir "$install_dir" "$VALID_VERSION_NEW" >> "$TEST_LOG_FILE" 2>&1; then
+        if [[ -x "$install_dir/golangci-lint" ]]; then
+            log_test_pass "Test download ignores golangci-lint in PATH"
+        else
+            log_test_fail "Test download ignores golangci-lint in PATH" "Local binary not created"
+        fi
     else
-        log_test_fail "Test skip download when golangci-lint is in PATH" "Script failed"
+        log_test_fail "Test download ignores golangci-lint in PATH" "Script failed"
     fi
 
     # Restore PATH
@@ -332,7 +331,7 @@ main() {
     test_help_option
     test_invalid_option
     test_missing_install_dir_argument
-    test_skip_when_golangci_lint_in_path
+    test_download_ignores_path
     test_custom_install_directory
     test_version_format_validation
 
