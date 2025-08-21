@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # This script automates the download and installation of bashate, a code style enforcement tool for bash programs.
+# It checks if bashate is available in the local install directory with the exact required version.
 # It creates a local Python virtual environment and installs bashate via pip, then creates
 # a wrapper script to execute bashate from the virtual environment.
 
@@ -23,13 +24,13 @@ Usage: $0 [OPTIONS] [VERSION]
 Downloads and installs bashate, a code style enforcement tool for bash programs.
 
 Arguments:
-  VERSION                     The bashate version to install (default: $DEFAULT_VERSION)
+  VERSION                    Exact bashate version required (default: $DEFAULT_VERSION)
                              Must be in format X.Y.Z (e.g., 2.1.1)
                              Available versions: https://pypi.org/project/bashate/#history
 
 Options:
   --install-dir DIR          Directory to install bashate wrapper script (default: $DEFAULT_INSTALL_DIR)
-  --force                    Force download even if a compatible version exists
+
   --help                     Show this help message and exit
   --verbose                  Enable verbose output for debugging
 
@@ -37,7 +38,7 @@ Examples:
   $0                                    # Install default version ($DEFAULT_VERSION)
   $0 2.1.0                             # Install specific version
   $0 --install-dir /usr/local/bin      # Install to custom directory
-  $0 --force 2.1.1                    # Force install even if already present
+
 
 For more information about bashate, visit: https://github.com/openstack/bashate
 EOF
@@ -54,17 +55,21 @@ error() {
     exit 1
 }
 
-# Function to compare semantic versions
-# Returns 0 if version1 >= version2, 1 otherwise
-version_gte() {
+# Function to check if two version strings are exactly equal
+# Returns 0 if version1 == version2, 1 otherwise
+version_exact_match() {
     local version1="$1"
     local version2="$2"
 
-    # Use sort -V for version comparison
-    if printf '%s\n%s\n' "$version2" "$version1" | sort -V | head -n1 | grep -q "^$version2$"; then
-        return 0
+    # Remove 'v' prefix if present
+    version1="${version1#v}"
+    version2="${version2#v}"
+
+    # Check for exact match
+    if [[ "$version1" == "$version2" ]]; then
+        return 0  # versions match exactly
     else
-        return 1
+        return 1  # versions don't match
     fi
 }
 
@@ -93,7 +98,7 @@ validate_version() {
 # Parse command line arguments
 INSTALL_DIR="$DEFAULT_INSTALL_DIR"
 VERSION="$DEFAULT_VERSION"
-FORCE_INSTALL=false
+
 VERBOSE=false
 
 while [[ $# -gt 0 ]]; do
@@ -102,10 +107,7 @@ while [[ $# -gt 0 ]]; do
             INSTALL_DIR="$2"
             shift 2
             ;;
-        --force)
-            FORCE_INSTALL=true
-            shift
-            ;;
+
         --verbose)
             VERBOSE=true
             shift
@@ -138,32 +140,19 @@ VENV_DIR="$INSTALL_DIR/.bashate-venv"
 
 log "Checking for existing bashate installation"
 
-# Check if bashate already exists and meets version requirement
-if [[ "$FORCE_INSTALL" != "true" ]]; then
-    # Check local installation first
+# Check if bashate already exists with exact version
+# Check local installation first
     if existing_version=$(check_existing_version "$WRAPPER_PATH"); then
         log "Found existing bashate at $WRAPPER_PATH (version: $existing_version)"
-        if version_gte "$existing_version" "$VERSION"; then
-            echo "bashate $existing_version is already installed at $WRAPPER_PATH and meets the required version ($VERSION)"
+        if version_exact_match "$existing_version" "$VERSION"; then
+            echo "bashate $existing_version is already installed at $WRAPPER_PATH and matches the required version ($VERSION)"
             exit 0
         else
-            log "Existing version $existing_version is older than required $VERSION, will upgrade"
+            log "Existing version $existing_version does not match required $VERSION, will install"
         fi
     fi
 
-    # Check system PATH
-    if command -v bashate >/dev/null 2>&1; then
-        if existing_version=$(check_existing_version "$(command -v bashate)"); then
-            log "Found existing bashate in PATH (version: $existing_version)"
-            if version_gte "$existing_version" "$VERSION"; then
-                echo "bashate $existing_version is already available in PATH and meets the required version ($VERSION)"
-                exit 0
-            else
-                log "Existing version $existing_version in PATH is older than required $VERSION, will install to $INSTALL_DIR"
-            fi
-        fi
-    fi
-fi
+    # System PATH checking removed - only check local install directory
 
 # Check if Python 3 is available
 if ! command -v python3 >/dev/null 2>&1; then
@@ -172,11 +161,7 @@ fi
 
 log "Creating Python virtual environment for bashate"
 
-# Remove existing virtual environment if doing a forced install
-if [[ "$FORCE_INSTALL" == "true" && -d "$VENV_DIR" ]]; then
-    log "Removing existing virtual environment"
-    rm -rf "$VENV_DIR"
-fi
+
 
 # Create virtual environment if it doesn't exist
 if [[ ! -d "$VENV_DIR" ]]; then

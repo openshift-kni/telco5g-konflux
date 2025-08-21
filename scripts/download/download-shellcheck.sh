@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 
 # This script automates the download and installation of shellcheck, a static analysis tool for shell scripts.
-# It first checks if shellcheck is available in the system PATH or local install directory.
-# If found, it compares the version to ensure it meets the minimum requirement.
-# It only downloads if no suitable version is found.
+# It checks if shellcheck is available in the local install directory with the exact required version.
+# It downloads and installs shellcheck to the local directory if not found or if the version
+# doesn't exactly match the specified version. If an existing binary can't execute
+# (e.g., wrong architecture/OS), it will be automatically replaced.
 
 # Configure shell to exit immediately if a command exits with a non-zero status,
 # treat unset variables as an error, and fail a pipeline if any command fails.
@@ -26,15 +27,17 @@ usage() {
 Usage: $0 [OPTIONS] [VERSION]
 
 Downloads and installs shellcheck, a static analysis tool for shell scripts.
+Checks local install directory first, and only downloads if the existing
+version doesn't exactly match the specified version.
 
 Arguments:
-  VERSION                     The shellcheck version to install (default: $DEFAULT_VERSION)
+  VERSION                    Exact shellcheck version required (default: $DEFAULT_VERSION)
                              Must be in format vX.Y.Z (e.g., v0.10.0)
                              Available versions: https://github.com/koalaman/shellcheck/releases
 
 Options:
   --install-dir DIR          Directory to install shellcheck binary (default: $DEFAULT_INSTALL_DIR)
-  --force                    Force download even if a compatible version exists
+
   --help                     Show this help message and exit
   --verbose                  Enable verbose output for debugging
 
@@ -42,7 +45,7 @@ Examples:
   $0                                    # Install default version ($DEFAULT_VERSION)
   $0 v0.9.0                            # Install specific version
   $0 --install-dir /usr/local/bin      # Install to custom directory
-  $0 --force v0.10.0                   # Force install even if already present
+
 
 For more information about shellcheck, visit: https://github.com/koalaman/shellcheck
 EOF
@@ -59,9 +62,9 @@ error() {
     exit 1
 }
 
-# Function to compare semantic versions
-# Returns 0 if version1 >= version2, 1 otherwise
-version_gte() {
+# Function to check if two version strings are exactly equal
+# Returns 0 if version1 == version2, 1 otherwise
+version_exact_match() {
     local version1="$1"
     local version2="$2"
 
@@ -69,11 +72,11 @@ version_gte() {
     version1="${version1#v}"
     version2="${version2#v}"
 
-    # Use sort -V for version comparison
-    if printf '%s\n%s\n' "$version2" "$version1" | sort -V | head -n1 | grep -q "^$version2$"; then
-        return 0
+    # Check for exact match
+    if [[ "$version1" == "$version2" ]]; then
+        return 0  # versions match exactly
     else
-        return 1
+        return 1  # versions don't match
     fi
 }
 
@@ -127,7 +130,7 @@ validate_version() {
 # Parse command line arguments
 INSTALL_DIR="$DEFAULT_INSTALL_DIR"
 VERSION="$DEFAULT_VERSION"
-FORCE_INSTALL=false
+
 VERBOSE=false
 
 while [[ $# -gt 0 ]]; do
@@ -136,10 +139,7 @@ while [[ $# -gt 0 ]]; do
             INSTALL_DIR="$2"
             shift 2
             ;;
-        --force)
-            FORCE_INSTALL=true
-            shift
-            ;;
+
         --verbose)
             VERBOSE=true
             shift
@@ -171,32 +171,17 @@ BINARY_PATH="$INSTALL_DIR/shellcheck"
 
 log "Checking for existing shellcheck installation"
 
-# Check if shellcheck already exists and meets version requirement
-if [[ "$FORCE_INSTALL" != "true" ]]; then
-    # Check local installation first
+# Check if shellcheck already exists with exact version
+# Check local installation first
     if existing_version=$(check_existing_version "$BINARY_PATH"); then
         log "Found existing shellcheck at $BINARY_PATH (version: $existing_version)"
-        if version_gte "$existing_version" "$VERSION"; then
-            echo "shellcheck $existing_version is already installed at $BINARY_PATH and meets the required version ($VERSION)"
+        if version_exact_match "$existing_version" "$VERSION"; then
+            echo "shellcheck $existing_version is already installed at $BINARY_PATH and matches the required version ($VERSION)"
             exit 0
         else
-            log "Existing version $existing_version is older than required $VERSION, will upgrade"
+            log "Existing version $existing_version does not match required $VERSION, will install"
         fi
     fi
-
-    # Check system PATH
-    if command -v shellcheck >/dev/null 2>&1; then
-        if existing_version=$(check_existing_version "$(command -v shellcheck)"); then
-            log "Found existing shellcheck in PATH (version: $existing_version)"
-            if version_gte "$existing_version" "$VERSION"; then
-                echo "shellcheck $existing_version is already available in PATH and meets the required version ($VERSION)"
-                exit 0
-            else
-                log "Existing version $existing_version in PATH is older than required $VERSION, will install to $INSTALL_DIR"
-            fi
-        fi
-    fi
-fi
 
 # Detect platform and architecture
 PLATFORM=$(detect_platform)
@@ -227,7 +212,7 @@ if ! tar -xf shellcheck.tar.xz; then
 fi
 
 # Find the extracted binary (it should be in a subdirectory)
-EXTRACTED_BINARY=$(find . -name "shellcheck" -type f -executable | head -n1)
+EXTRACTED_BINARY=$(find . -name "shellcheck" -type f | head -n1)
 if [[ -z "$EXTRACTED_BINARY" ]]; then
     error "Could not find shellcheck binary in extracted archive"
 fi

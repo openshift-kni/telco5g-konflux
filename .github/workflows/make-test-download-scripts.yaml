@@ -12,15 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Remove local jq as it interferes with the test
-        run: sudo apt-get remove -y jq
-      - name: Remove local yq as it interferes with the test
-        run: sudo rm -f $(which yq)
-      - name: Remove local yamllint as it interferes with the test
-        run: sudo rm -f $(which yamllint)
-      - name: Remove local shellcheck as it interferes with the test
-        run: sudo rm -f $(which shellcheck)
-      - name: Install xz as it is required by the test
+      - name: Install xz as it is required to unzip the shellcheck binary
         run: sudo apt-get install -y xz-utils
       - name: Run make test locally for the download scripts
         run: make -C scripts/download test-local || (cat scripts/download/tests/test_results.log && exit 1)
