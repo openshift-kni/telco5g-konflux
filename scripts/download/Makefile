@@ -57,6 +57,23 @@ download-bashate: ## Download bashate bash style checker (use DOWNLOAD_BASHATE_V
 	@echo "Downloading bashate version $(DOWNLOAD_BASHATE_VERSION) to $(DOWNLOAD_INSTALL_DIR)"
 	$(SCRIPT_DIR)/download-bashate.sh --install-dir $(DOWNLOAD_INSTALL_DIR) $(DOWNLOAD_BASHATE_VERSION)
 
+.PHONY: download-go-tool
+download-go-tool: ## Download Go tool using go install (requires TOOL_NAME and GO_MODULE variables)
+	@if [ -z "$(TOOL_NAME)" ]; then \
+		echo "Error: TOOL_NAME is required"; \
+		echo "Usage: make download-go-tool TOOL_NAME=<tool-name> GO_MODULE=<module@version>"; \
+		echo "Example: make download-go-tool TOOL_NAME=golangci-lint GO_MODULE=github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.0"; \
+		exit 1; \
+	fi
+	@if [ -z "$(GO_MODULE)" ]; then \
+		echo "Error: GO_MODULE is required"; \
+		echo "Usage: make download-go-tool TOOL_NAME=<tool-name> GO_MODULE=<module@version>"; \
+		echo "Example: make download-go-tool TOOL_NAME=golangci-lint GO_MODULE=github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.0"; \
+		exit 1; \
+	fi
+	@echo "Downloading Go tool $(TOOL_NAME) from $(GO_MODULE) to $(DOWNLOAD_INSTALL_DIR)"
+	$(SCRIPT_DIR)/download-go-tool.sh --install-dir $(DOWNLOAD_INSTALL_DIR) $(TOOL_NAME) $(GO_MODULE)
+
 .PHONY: download-all
 download-all: download-yq download-opm download-jq download-operator-sdk download-yamllint download-golangci-lint download-shellcheck download-bashate ## Download all tools (yq, opm, jq, operator-sdk, yamllint, golangci-lint, shellcheck, bashate)
 	@echo "All tools downloaded successfully to $(DOWNLOAD_INSTALL_DIR)"
@@ -82,7 +99,7 @@ test-containerized: ## Run tests for all download scripts
 	podman run --rm -v $(SCRIPT_DIR):/workspace -w /workspace \
 		registry.access.redhat.com/ubi9/ubi:latest \
 		/bin/bash -c "set -e && \
-		dnf install -y xz && \
+		dnf install -y xz golang && \
 		./tests/test-download-opm.sh && \
 		./tests/test-download-operator-sdk.sh && \
 		./tests/test-download-yq.sh && \
@@ -90,7 +107,8 @@ test-containerized: ## Run tests for all download scripts
 		./tests/test-download-yamllint.sh && \
 		./tests/test-download-golangci-lint.sh && \
 		./tests/test-download-shellcheck.sh && \
-		./tests/test-download-bashate.sh"
+		./tests/test-download-bashate.sh && \
+		./tests/test-download-go-tool.sh"
 	@echo "All download script tests completed successfully."
 
 .PHONY: test-local
@@ -105,7 +123,8 @@ test-local: ## Run tests locally (may be affected by system-installed tools)
 	$(SCRIPT_DIR)/tests/test-download-yamllint.sh && \
 	$(SCRIPT_DIR)/tests/test-download-golangci-lint.sh && \
 	$(SCRIPT_DIR)/tests/test-download-shellcheck.sh && \
-	$(SCRIPT_DIR)/tests/test-download-bashate.sh
+	$(SCRIPT_DIR)/tests/test-download-bashate.sh && \
+	$(SCRIPT_DIR)/tests/test-download-go-tool.sh
 	@echo "All download script tests completed successfully."
 
 .PHONY: test-clean
@@ -140,6 +159,7 @@ help: ## Display available targets
 	@echo "  make download-golangci-lint DOWNLOAD_GOLANGCI_LINT_VERSION=v1.55.0 # Download specific golangci-lint version"
 	@echo "  make download-shellcheck DOWNLOAD_SHELLCHECK_VERSION=v0.9.0    # Download specific shellcheck version"
 	@echo "  make download-bashate DOWNLOAD_BASHATE_VERSION=2.1.0          # Download specific bashate version"
+	@echo "  make download-go-tool TOOL_NAME=controller-gen GO_MODULE=sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0 # Download Go tool"
 	@echo "  make download-all DOWNLOAD_INSTALL_DIR=/usr/local/bin        # Download to custom directory"
 	@echo "  make test                                                    # Run all download script tests in UBI9 container"
 	@echo "  make test-local                                              # Run tests locally (faster, may be affected by system tools)"
@@ -156,3 +176,4 @@ help: ## Display available targets
 	@echo "  $(SCRIPT_DIR)/download-golangci-lint.sh --help"
 	@echo "  $(SCRIPT_DIR)/download-shellcheck.sh --help"
 	@echo "  $(SCRIPT_DIR)/download-bashate.sh --help"
+	@echo "  $(SCRIPT_DIR)/download-go-tool.sh --help"
