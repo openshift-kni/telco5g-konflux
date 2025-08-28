@@ -1,0 +1,24 @@
+contentOrigin:
+  repos:
+    - repoid: ubi-9-baseos
+      name: Red Hat Universal Base Image 9 (RPMs) - BaseOS
+      baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/baseos/os
+      enabled: 1
+      gpgcheck: 1
+      gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+    - repoid: ubi-9-appstream
+      name: Red Hat Universal Base Image 9 (RPMs) - AppStream
+      baseurl: https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/$basearch/appstream/os
+      enabled: 1
+      gpgcheck: 1
+      gpgkey: file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+
+arches:
+  - x86_64
+  - aarch64
+
+packages:
+  - name: jq
+  - name: less
+  - name: findutils
+  - name: procps-ng
