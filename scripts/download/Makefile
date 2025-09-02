@@ -10,7 +10,6 @@ DOWNLOAD_OPM_VERSION ?= v1.52.0
 DOWNLOAD_JQ_VERSION ?= 1.7.1
 DOWNLOAD_OPERATOR_SDK_VERSION ?= 1.40.0
 DOWNLOAD_YAMLLINT_VERSION ?= 1.37.1
-DOWNLOAD_GOLANGCI_LINT_VERSION ?= v1.64.8
 DOWNLOAD_SHELLCHECK_VERSION ?= v0.10.0
 DOWNLOAD_BASHATE_VERSION ?= 2.1.1
 
@@ -42,11 +41,6 @@ download-yamllint: ## Download yamllint YAML linter (use DOWNLOAD_YAMLLINT_VERSI
 	@echo "Downloading yamllint version $(DOWNLOAD_YAMLLINT_VERSION) to $(DOWNLOAD_INSTALL_DIR)"
 	$(SCRIPT_DIR)/download-yamllint.sh --install-dir $(DOWNLOAD_INSTALL_DIR) $(DOWNLOAD_YAMLLINT_VERSION)
 
-.PHONY: download-golangci-lint
-download-golangci-lint: ## Download golangci-lint Go linter (use DOWNLOAD_GOLANGCI_LINT_VERSION and DOWNLOAD_INSTALL_DIR to customize)
-	@echo "Downloading golangci-lint version $(DOWNLOAD_GOLANGCI_LINT_VERSION) to $(DOWNLOAD_INSTALL_DIR)"
-	$(SCRIPT_DIR)/download-golangci-lint.sh --install-dir $(DOWNLOAD_INSTALL_DIR) $(DOWNLOAD_GOLANGCI_LINT_VERSION)
-
 .PHONY: download-shellcheck
 download-shellcheck: ## Download shellcheck shell script linter (use DOWNLOAD_SHELLCHECK_VERSION and DOWNLOAD_INSTALL_DIR to customize)
 	@echo "Downloading shellcheck version $(DOWNLOAD_SHELLCHECK_VERSION) to $(DOWNLOAD_INSTALL_DIR)"
@@ -75,7 +69,7 @@ download-go-tool: ## Download Go tool using go install (requires TOOL_NAME and G
 	$(SCRIPT_DIR)/download-go-tool.sh --install-dir $(DOWNLOAD_INSTALL_DIR) $(TOOL_NAME) $(GO_MODULE)
 
 .PHONY: download-all
-download-all: download-yq download-opm download-jq download-operator-sdk download-yamllint download-golangci-lint download-shellcheck download-bashate ## Download all tools (yq, opm, jq, operator-sdk, yamllint, golangci-lint, shellcheck, bashate)
+download-all: download-yq download-opm download-jq download-operator-sdk download-yamllint download-shellcheck download-bashate ## Download all tools (yq, opm, jq, operator-sdk, yamllint, shellcheck, bashate)
 	@echo "All tools downloaded successfully to $(DOWNLOAD_INSTALL_DIR)"
 
 .PHONY: clean
@@ -87,7 +81,6 @@ clean: ## Remove downloaded tools from install directory
 	rm -f $(DOWNLOAD_INSTALL_DIR)/operator-sdk
 	rm -f $(DOWNLOAD_INSTALL_DIR)/yamllint
 	rm -rf $(DOWNLOAD_INSTALL_DIR)/.yamllint-venv
-	rm -f $(DOWNLOAD_INSTALL_DIR)/golangci-lint
 	rm -f $(DOWNLOAD_INSTALL_DIR)/shellcheck
 	rm -f $(DOWNLOAD_INSTALL_DIR)/bashate
 	rm -rf $(DOWNLOAD_INSTALL_DIR)/.bashate-venv
@@ -105,7 +98,6 @@ test-containerized: ## Run tests for all download scripts
 		./tests/test-download-yq.sh && \
 		./tests/test-download-jq.sh && \
 		./tests/test-download-yamllint.sh && \
-		./tests/test-download-golangci-lint.sh && \
 		./tests/test-download-shellcheck.sh && \
 		./tests/test-download-bashate.sh && \
 		./tests/test-download-go-tool.sh"
@@ -121,7 +113,6 @@ test-local: ## Run tests locally (may be affected by system-installed tools)
 	$(SCRIPT_DIR)/tests/test-download-yq.sh && \
 	$(SCRIPT_DIR)/tests/test-download-jq.sh && \
 	$(SCRIPT_DIR)/tests/test-download-yamllint.sh && \
-	$(SCRIPT_DIR)/tests/test-download-golangci-lint.sh && \
 	$(SCRIPT_DIR)/tests/test-download-shellcheck.sh && \
 	$(SCRIPT_DIR)/tests/test-download-bashate.sh && \
 	$(SCRIPT_DIR)/tests/test-download-go-tool.sh
@@ -146,7 +137,6 @@ help: ## Display available targets
 	@echo "  DOWNLOAD_JQ_VERSION           jq version (current: $(DOWNLOAD_JQ_VERSION))"
 	@echo "  DOWNLOAD_OPERATOR_SDK_VERSION operator-sdk version (current: $(DOWNLOAD_OPERATOR_SDK_VERSION))"
 	@echo "  DOWNLOAD_YAMLLINT_VERSION     yamllint version (current: $(DOWNLOAD_YAMLLINT_VERSION))"
-	@echo "  DOWNLOAD_GOLANGCI_LINT_VERSION golangci-lint version (current: $(DOWNLOAD_GOLANGCI_LINT_VERSION))"
 	@echo "  DOWNLOAD_SHELLCHECK_VERSION   shellcheck version (current: $(DOWNLOAD_SHELLCHECK_VERSION))"
 	@echo "  DOWNLOAD_BASHATE_VERSION      bashate version (current: $(DOWNLOAD_BASHATE_VERSION))"
 	@echo "  DOWNLOAD_INSTALL_DIR          Install directory (current: $(DOWNLOAD_INSTALL_DIR))"
@@ -156,7 +146,6 @@ help: ## Display available targets
 	@echo "  make download-yq DOWNLOAD_YQ_VERSION=v4.44.2                 # Download specific yq version"
 	@echo "  make download-operator-sdk DOWNLOAD_OPERATOR_SDK_VERSION=1.39.0 # Download operator-sdk for specific version"
 	@echo "  make download-yamllint DOWNLOAD_YAMLLINT_VERSION=1.35.1      # Download specific yamllint version"
-	@echo "  make download-golangci-lint DOWNLOAD_GOLANGCI_LINT_VERSION=v1.55.0 # Download specific golangci-lint version"
 	@echo "  make download-shellcheck DOWNLOAD_SHELLCHECK_VERSION=v0.9.0    # Download specific shellcheck version"
 	@echo "  make download-bashate DOWNLOAD_BASHATE_VERSION=2.1.0          # Download specific bashate version"
 	@echo "  make download-go-tool TOOL_NAME=controller-gen GO_MODULE=sigs.k8s.io/controller-tools/cmd/controller-gen@v0.15.0 # Download Go tool"
@@ -173,7 +162,6 @@ help: ## Display available targets
 	@echo "  $(SCRIPT_DIR)/download-jq.sh --help"
 	@echo "  $(SCRIPT_DIR)/download-operator-sdk.sh --help"
 	@echo "  $(SCRIPT_DIR)/download-yamllint.sh --help"
-	@echo "  $(SCRIPT_DIR)/download-golangci-lint.sh --help"
 	@echo "  $(SCRIPT_DIR)/download-shellcheck.sh --help"
 	@echo "  $(SCRIPT_DIR)/download-bashate.sh --help"
 	@echo "  $(SCRIPT_DIR)/download-go-tool.sh --help"
