@@ -106,11 +106,15 @@ cat > "${SCRIPT_FILE_PATH}" <<EOF
 #!/usr/bin/env bash
 set -eux
 
-# Helper function to extract repository IDs from rpms.in.yaml
+# Copy input file to output file for modifications
+echo "STEP 0: Copying rpms.in.yaml to rpms.out.yaml..."
+cp /source/rpms.in.yaml /source/rpms.out.yaml
+
+# Helper function to extract repository IDs from rpms.out.yaml
 extract_repo_ids() {
-    if [ -f "/source/rpms.in.yaml" ]; then
+    if [ -f "/source/rpms.out.yaml" ]; then
         # Extract repoid values from the YAML file
-        grep -E '^[[:space:]]*-[[:space:]]*repoid:' /source/rpms.in.yaml | \
+        grep -E '^[[:space:]]*-[[:space:]]*repoid:' /source/rpms.out.yaml | \
             sed 's/^[[:space:]]*-[[:space:]]*repoid:[[:space:]]*//' | \
             tr -d '"'"'"
     fi
@@ -146,6 +150,27 @@ if [ "${USE_RHSM}" = "true" ]; then
 
     echo "STEP 5: Copying repo file..."
     cp /etc/yum.repos.d/redhat.repo /source/redhat.repo
+
+    echo "STEP 5b: Updating SSL certificate paths in rpms.out.yaml..."
+    # Find the actual certificate files created by RHSM registration
+    CERT_FILE=\$(find /etc/pki/entitlement/ -type f -name "*.pem" ! -name "*-key.pem" | head -1)
+    KEY_FILE=\$(find /etc/pki/entitlement/ -type f -name "*-key.pem" | head -1)
+
+    if [ -n "\$CERT_FILE" ] && [ -n "\$KEY_FILE" ]; then
+        echo "Found certificates: \$CERT_FILE and \$KEY_FILE"
+        # Update rpms.out.yaml with the actual certificate paths
+        # Handle both sslclientcert and sslclientkey patterns
+        sed -i "s|sslclientcert: /etc/pki/entitlement/[^[:space:]]*\.pem|sslclientcert: \$CERT_FILE|g" /source/rpms.out.yaml
+        sed -i "s|sslclientkey: /etc/pki/entitlement/[^[:space:]]*-key\.pem|sslclientkey: \$KEY_FILE|g" /source/rpms.out.yaml
+
+        # Also update any repository file that might have been generated
+        if [ -f "/source/redhat.repo" ]; then
+            sed -i "s|^sslclientcert.*|sslclientcert = \$CERT_FILE|" /source/redhat.repo
+            sed -i "s|^sslclientkey.*|sslclientkey = \$KEY_FILE|" /source/redhat.repo
+        fi
+    else
+        echo "WARNING: Could not find entitlement certificates"
+    fi
 else
     echo "STEP 1: Skipping RHSM registration..."
     echo "STEP 3: Setting up UBI repositories..."
@@ -168,27 +193,6 @@ REPOS_EOF
 
     echo "STEP 5: Copying repo file..."
     cp /etc/yum.repos.d/redhat.repo /source/redhat.repo
-
-    echo "STEP 5b: Updating SSL certificate paths in rpms.in.yaml..."
-    # Find the actual certificate files created by RHSM registration
-    CERT_FILE=\$(find /etc/pki/entitlement/ -type f -name "*.pem" ! -name "*-key.pem" | head -1)
-    KEY_FILE=\$(find /etc/pki/entitlement/ -type f -name "*-key.pem" | head -1)
-
-    if [ -n "\$CERT_FILE" ] && [ -n "\$KEY_FILE" ]; then
-        echo "Found certificates: \$CERT_FILE and \$KEY_FILE"
-        # Update rpms.in.yaml with the actual certificate paths
-        # Handle both sslclientcert and sslclientkey patterns
-        sed -i "s|sslclientcert: /etc/pki/entitlement/[^[:space:]]*\.pem|sslclientcert: \$CERT_FILE|g" /source/rpms.in.yaml
-        sed -i "s|sslclientkey: /etc/pki/entitlement/[^[:space:]]*-key\.pem|sslclientkey: \$KEY_FILE|g" /source/rpms.in.yaml
-
-        # Also update any repository file that might have been generated
-        if [ -f "/source/redhat.repo" ]; then
-            sed -i "s|^sslclientcert.*|sslclientcert = \$CERT_FILE|" /source/redhat.repo
-            sed -i "s|^sslclientkey.*|sslclientkey = \$KEY_FILE|" /source/redhat.repo
-        fi
-    else
-        echo "WARNING: Could not find entitlement certificates"
-    fi
 fi
 
 echo "STEP 2: Installing tools (skopeo, python3-pip)..."
@@ -206,7 +210,7 @@ echo "STEP 6: Generating lock file for image: ${IMAGE_TO_LOCK}"
 /root/.local/bin/rpm-lockfile-prototype \
     --image "${IMAGE_TO_LOCK}" \
     --outfile="/source/rpms.lock.yaml" \
-    /source/rpms.in.yaml
+    /source/rpms.out.yaml
 
 echo "Lock file generation complete inside the container."
 EOF
@@ -226,5 +230,6 @@ echo -e "\n--- Success! ---"
 echo "Generated files are located in '${ABS_PROJECT_DIR}'."
 echo "Please review and commit the following files:"
 echo "  - redhat.repo"
+echo "  - rpms.out.yaml (modified input file with runtime changes)"
 echo "  - rpms.lock.yaml"
 echo "--------------------"

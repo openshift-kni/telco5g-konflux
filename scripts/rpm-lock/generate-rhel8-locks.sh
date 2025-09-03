@@ -99,11 +99,15 @@ else
     read -r -d '' UBI8_COMMANDS <<EOF
 set -eux
 
-# Helper function to extract repository IDs from rpms.in.yaml
+# Copy input file to output file for modifications
+echo "[UBI8] Copying rpms.in.yaml to rpms.out.yaml..."
+cp /source/rpms.in.yaml /source/rpms.out.yaml
+
+# Helper function to extract repository IDs from rpms.out.yaml
 extract_repo_ids() {
-    if [ -f "/source/rpms.in.yaml" ]; then
+    if [ -f "/source/rpms.out.yaml" ]; then
         # Extract repoid values from the YAML file
-        grep -E '^[[:space:]]*-[[:space:]]*repoid:' /source/rpms.in.yaml | \
+        grep -E '^[[:space:]]*-[[:space:]]*repoid:' /source/rpms.out.yaml | \
             sed 's/^[[:space:]]*-[[:space:]]*repoid:[[:space:]]*//' | \
             tr -d '"'"'"
     fi
@@ -195,11 +199,17 @@ cat > "${SCRIPT_FILE_PATH}" <<EOF
 #!/usr/bin/env bash
 set -eux
 
-# Helper function to extract repository IDs from rpms.in.yaml
+# Copy input file to output file for modifications (if not already done)
+if [ ! -f "/source/rpms.out.yaml" ]; then
+    echo "[UBI9] Copying rpms.in.yaml to rpms.out.yaml..."
+    cp /source/rpms.in.yaml /source/rpms.out.yaml
+fi
+
+# Helper function to extract repository IDs from rpms.out.yaml
 extract_repo_ids() {
-    if [ -f "/source/rpms.in.yaml" ]; then
+    if [ -f "/source/rpms.out.yaml" ]; then
         # Extract repoid values from the YAML file
-        grep -E '^[[:space:]]*-[[:space:]]*repoid:' /source/rpms.in.yaml | \
+        grep -E '^[[:space:]]*-[[:space:]]*repoid:' /source/rpms.out.yaml | \
             sed 's/^[[:space:]]*-[[:space:]]*repoid:[[:space:]]*//' | \
             tr -d '"'"'"
     fi
@@ -245,10 +255,10 @@ if [ "${USE_RHSM_RHEL9}" = "true" ]; then
         sed -i "s|^sslclientcert.*|sslclientcert = \$CERT_FILE|" "/source/redhat.repo"
         sed -i "s|^sslclientkey.*|sslclientkey = \$KEY_FILE|" "/source/redhat.repo"
 
-        # Also update rpms.in.yaml with the actual certificate paths
-        echo "[UBI9] Updating SSL certificate paths in rpms.in.yaml..."
-        sed -i "s|sslclientcert: /etc/pki/entitlement/[^[:space:]]*\.pem|sslclientcert: \$CERT_FILE|g" /source/rpms.in.yaml
-        sed -i "s|sslclientkey: /etc/pki/entitlement/[^[:space:]]*-key\.pem|sslclientkey: \$KEY_FILE|g" /source/rpms.in.yaml
+        # Also update rpms.out.yaml with the actual certificate paths
+        echo "[UBI9] Updating SSL certificate paths in rpms.out.yaml..."
+        sed -i "s|sslclientcert: /etc/pki/entitlement/[^[:space:]]*\.pem|sslclientcert: \$CERT_FILE|g" /source/rpms.out.yaml
+        sed -i "s|sslclientkey: /etc/pki/entitlement/[^[:space:]]*-key\.pem|sslclientkey: \$KEY_FILE|g" /source/rpms.out.yaml
     else
         echo "[UBI9] WARNING: Could not find entitlement certificates"
     fi
@@ -282,7 +292,7 @@ echo "[UBI9] Generating lock file for image: ${IMAGE_TO_LOCK}"
 /root/.local/bin/rpm-lockfile-prototype \
     --image "${IMAGE_TO_LOCK}" \
     --outfile="/source/rpms.lock.yaml" \
-    /source/rpms.in.yaml
+    /source/rpms.out.yaml
 
 echo "[UBI9] Lock file generation complete."
 EOF
@@ -298,6 +308,7 @@ echo -e "\n--- Success! ---"
 echo "Generated files for RHEL 8 are located in '${ABS_PROJECT_DIR}'."
 echo "Please review and commit the following files:"
 echo "  - redhat.repo"
+echo "  - rpms.out.yaml (modified input file with runtime changes)"
 echo "  - rpms.lock.yaml"
 
 # Clean up temporary files

@@ -1,3 +1,4 @@
 redhat.repo
 podman_script.sh
 rpms.lock.yaml
+rpms.out.yaml
