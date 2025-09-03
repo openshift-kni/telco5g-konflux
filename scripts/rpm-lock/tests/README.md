@@ -150,7 +150,7 @@ export RHEL9_ORG_ID="your-organization-id"
 After successful integration tests:
 - `rhel8-test/redhat.repo` - Repository configuration
 - `rhel8-test/rpms.lock.yaml` - Package lock file
-- `rhel9-test/redhat.repo` - Repository configuration  
+- `rhel9-test/redhat.repo` - Repository configuration
 - `rhel9-test/rpms.lock.yaml` - Package lock file
 
 ## Troubleshooting
