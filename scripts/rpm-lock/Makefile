@@ -25,12 +25,12 @@ RHEL9_IMAGE ?= registry.redhat.io/rhel9-4-els/rhel
 RHEL9_MINIMAL_IMAGE ?= registry.redhat.io/rhel9-4-els/rhel-minimal
 RHEL9_RELEASE ?= 9.4
 
-UBI8_IMAGE ?= registry.access.redhat.io/ubi8/ubi
-UBI8_MINIMAL_IMAGE ?= registry.access.redhat.io/ubi8/ubi-minimal
+UBI8_IMAGE ?= registry.access.redhat.com/ubi8/ubi
+UBI8_MINIMAL_IMAGE ?= registry.access.redhat.com/ubi8/ubi-minimal
 UBI8_RELEASE ?= 8.10
 
-UBI9_IMAGE ?= registry.access.redhat.io/ubi9/ubi
-UBI9_MINIMAL_IMAGE ?= registry.access.redhat.io/ubi9/ubi-minimal
+UBI9_IMAGE ?= registry.access.redhat.com/ubi9/ubi
+UBI9_MINIMAL_IMAGE ?= registry.access.redhat.com/ubi9/ubi-minimal
 UBI9_RELEASE ?= 9.4
 
 # We use these images to run the scripts inside containers

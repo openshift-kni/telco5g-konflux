@@ -16,8 +16,8 @@ UBI8_RELEASE="${UBI8_RELEASE:-8.10}"
 UBI9_RELEASE="${UBI9_RELEASE:-9.4}"
 
 # The images used to RUN the containers, which need subscription-manager.
-UBI8_EXECUTION_IMAGE="${UBI8_EXECUTION_IMAGE:-registry.access.redhat.io/ubi8/ubi:${UBI8_RELEASE}}"
-UBI9_EXECUTION_IMAGE="${UBI9_EXECUTION_IMAGE:-registry.access.redhat.io/ubi9/ubi:${UBI9_RELEASE}}"
+UBI8_EXECUTION_IMAGE="${UBI8_EXECUTION_IMAGE:-registry.access.redhat.com/ubi8/ubi:${UBI8_RELEASE}}"
+UBI9_EXECUTION_IMAGE="${UBI9_EXECUTION_IMAGE:-registry.access.redhat.com/ubi9/ubi:${UBI9_RELEASE}}"
 
 # The image to generate the lock file FOR. Defaults to the UBI8 execution image if not set.
 IMAGE_TO_LOCK="${IMAGE_TO_LOCK:-${UBI8_EXECUTION_IMAGE}}"
