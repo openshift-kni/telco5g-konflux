@@ -55,7 +55,7 @@ print_warning() {
 # Cleanup function
 cleanup() {
     if [[ -d "$TEST_DIR" ]]; then
-        rm -f "$TEST_DIR/redhat.repo" "$TEST_DIR/rpms.lock.yaml" "$TEST_DIR/podman_script_ubi9.sh"
+        rm -f "$TEST_DIR/redhat.repo" "$TEST_DIR/rpms.lock.yaml" "$TEST_DIR/podman_script.sh"
         rm -f "$TEST_DIR/redhat-rhel8.repo.generated"
         print_info "Cleaned up generated test files"
     fi
@@ -144,9 +144,9 @@ if [[ -n "${RHEL8_ACTIVATION_KEY:-}" && -n "${RHEL8_ORG_ID:-}" && \
     print_info "Running script with RHSM credentials (subscription mode)"
     TEST_MODE="RHSM"
     # Keep existing credentials and use subscription images
-    export UBI8_EXECUTION_IMAGE="${UBI8_EXECUTION_IMAGE:-registry.redhat.io/ubi8/ubi:8.10}"
-    export UBI9_EXECUTION_IMAGE="${UBI9_EXECUTION_IMAGE:-registry.redhat.io/ubi9/ubi:9.4}"
-    export IMAGE_TO_LOCK="${IMAGE_TO_LOCK:-registry.redhat.io/ubi8/ubi-minimal:8.10}"
+    export RHEL8_EXECUTION_IMAGE="${RHEL8_EXECUTION_IMAGE:-registry.redhat.io/ubi8/ubi:8.10}"
+    export RHEL9_EXECUTION_IMAGE="${RHEL9_EXECUTION_IMAGE:-registry.redhat.io/ubi9/ubi:9.4}"
+    export RHEL8_IMAGE_TO_LOCK="${RHEL8_IMAGE_TO_LOCK:-registry.redhat.io/ubi8/ubi-minimal:8.10}"
 else
     print_info "Running script without RHSM credentials (UBI mode)"
     TEST_MODE="UBI"
@@ -155,9 +155,9 @@ else
     export RHEL8_ORG_ID=""
     export RHEL9_ACTIVATION_KEY=""
     export RHEL9_ORG_ID=""
-    export UBI8_EXECUTION_IMAGE="registry.access.redhat.com/ubi8/ubi:8.10"
-    export UBI9_EXECUTION_IMAGE="registry.access.redhat.com/ubi9/ubi:9.4"
-    export IMAGE_TO_LOCK="registry.access.redhat.com/ubi8/ubi-minimal:8.10"
+    export RHEL8_EXECUTION_IMAGE="registry.access.redhat.com/ubi8/ubi:8.10"
+    export RHEL9_EXECUTION_IMAGE="registry.access.redhat.com/ubi9/ubi:9.4"
+    export RHEL8_IMAGE_TO_LOCK="registry.access.redhat.com/ubi8/ubi-minimal:8.10"
 fi
 
 if [[ "$PODMAN_AVAILABLE" == "true" ]]; then
@@ -282,18 +282,6 @@ if grep -q "^arches:" "$TEST_DIR/rpms.in.yaml"; then
     print_test_result "Multi-arch detection" "PASS" "Multi-arch configuration detected"
 else
     print_test_result "Multi-arch detection" "FAIL" "Multi-arch configuration not detected"
-fi
-
-# Test 7: Two-stage process validation
-echo
-echo "Test 7: Two-stage process validation"
-print_info "RHEL 8 script uses a two-stage process (RHEL 8 + RHEL 9 containers)"
-
-# Check if the script mentions both stages
-if grep -q "Part 1.*RHEL 8" "$RHEL8_SCRIPT" && grep -q "Part 2.*UBI 9" "$RHEL8_SCRIPT"; then
-    print_test_result "Two-stage process structure" "PASS" "Script contains both RHEL 8 and UBI 9 stages"
-else
-    print_test_result "Two-stage process structure" "FAIL" "Two-stage process not properly structured"
 fi
 
 # Final results

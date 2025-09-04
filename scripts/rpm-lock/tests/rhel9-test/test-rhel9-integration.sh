@@ -140,16 +140,16 @@ if [[ -n "${RHEL9_ACTIVATION_KEY:-}" && -n "${RHEL9_ORG_ID:-}" && \
     print_info "Running script with RHSM credentials (subscription mode)"
     TEST_MODE="RHSM"
     # Keep existing credentials
-    export UBI9_EXECUTION_IMAGE="${UBI9_EXECUTION_IMAGE:-registry.redhat.io/rhel9-4-els/rhel:9.4}"
-    export RPM_LOCK_IMAGE="${RPM_LOCK_IMAGE:-registry.redhat.io/rhel9-4-els/rhel-minimal:9.4}"
+    export RHEL9_EXECUTION_IMAGE="${RHEL9_EXECUTION_IMAGE:-registry.redhat.io/rhel9-4-els/rhel:9.4}"
+    export RHEL9_IMAGE_TO_LOCK="${RHEL9_IMAGE_TO_LOCK:-registry.redhat.io/rhel9-4-els/rhel-minimal:9.4}"
 else
     print_info "Running script without RHSM credentials (UBI mode)"
     TEST_MODE="UBI"
     # Set environment variables for UBI mode (no credentials)
     export RHEL9_ACTIVATION_KEY=""
     export RHEL9_ORG_ID=""
-    export UBI9_EXECUTION_IMAGE="registry.access.redhat.com/ubi9/ubi:9.4"
-    export RPM_LOCK_IMAGE="registry.access.redhat.com/ubi9/ubi:9.4"
+    export RHEL9_EXECUTION_IMAGE="registry.access.redhat.com/ubi9/ubi:9.4"
+    export RHEL9_IMAGE_TO_LOCK="registry.access.redhat.com/ubi9/ubi-minimal:9.4"
 fi
 
 if [[ "$PODMAN_AVAILABLE" == "true" ]]; then
