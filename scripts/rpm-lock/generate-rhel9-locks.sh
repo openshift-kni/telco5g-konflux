@@ -15,7 +15,7 @@ SCRIPT_DIR="$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)"
 RHEL9_RELEASE="${RHEL9_RELEASE:-9.4}"
 
 # The image used to RUN the container, which needs subscription-manager and other tools.
-UBI9_EXECUTION_IMAGE="${UBI9_EXECUTION_IMAGE:-registry.access.redhat.io/ubi9/ubi:${UBI9_RELEASE}}"
+UBI9_EXECUTION_IMAGE="${UBI9_EXECUTION_IMAGE:-registry.access.redhat.com/ubi9/ubi:${UBI9_RELEASE}}"
 
 # The image to generate the lock file FOR. Defaults to the execution image if not set.
 IMAGE_TO_LOCK="${RPM_LOCK_IMAGE:-${UBI9_EXECUTION_IMAGE}}"
