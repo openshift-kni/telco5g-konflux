@@ -3,7 +3,7 @@
 # Automates the generation of an RPM lock file for a RHEL 9 image.
 # This script operates on a single target directory, which must contain
 # an 'rpms.in.yaml' file. The image to lock can be provided via the
-# RPM_LOCK_IMAGE environment variable, otherwise it defaults to the execution image.
+# RHEL9_IMAGE_TO_LOCK environment variable, otherwise it defaults to the execution image.
 #
 # Usage: ./generate-rhel9-locks.sh [PATH_TO_TARGET_DIR]
 #
@@ -15,10 +15,10 @@ SCRIPT_DIR="$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)"
 RHEL9_RELEASE="${RHEL9_RELEASE:-9.4}"
 
 # The image used to RUN the container, which needs subscription-manager and other tools.
-UBI9_EXECUTION_IMAGE="${UBI9_EXECUTION_IMAGE:-registry.access.redhat.com/ubi9/ubi:${UBI9_RELEASE}}"
+RHEL9_EXECUTION_IMAGE="${RHEL9_EXECUTION_IMAGE:-registry.access.redhat.com/ubi9/ubi:${RHEL9_RELEASE}}"
 
 # The image to generate the lock file FOR. Defaults to the execution image if not set.
-IMAGE_TO_LOCK="${RPM_LOCK_IMAGE:-${UBI9_EXECUTION_IMAGE}}"
+RHEL9_IMAGE_TO_LOCK="${RHEL9_IMAGE_TO_LOCK:-${RHEL9_EXECUTION_IMAGE}}"
 
 # Use environment variables for credentials if set, otherwise prompt for input
 RHEL9_ACTIVATION_KEY="${RHEL9_ACTIVATION_KEY:-}"
@@ -43,7 +43,7 @@ fi
 readonly LOCK_SCRIPT_TARGET_DIR="${1:-${SCRIPT_DIR}}"
 
 # --- Main Script ---
-# 0. Validate configuration
+# Step 1: Validate configuration
 if [[ ! -d "${LOCK_SCRIPT_TARGET_DIR}" ]]; then
     echo "ERROR: Target directory not found at '${LOCK_SCRIPT_TARGET_DIR}'." >&2
     exit 1
@@ -51,13 +51,13 @@ fi
 # Resolve to an absolute path for the podman mount
 readonly ABS_PROJECT_DIR="$(cd "${LOCK_SCRIPT_TARGET_DIR}" && pwd)"
 
-# 1. Check for podman
+# Step 2: Check for podman
 if ! command -v podman &> /dev/null; then
     echo "ERROR: podman could not be found. Please install it." >&2
     exit 1
 fi
 
-# 2. Check credentials and determine if RHSM registration should be used
+# Step 3: Check credentials and determine if RHSM registration should be used
 if [[ -z "$RHEL9_ORG_ID" || -z "$RHEL9_ACTIVATION_KEY" ]]; then
     echo "RHEL 9 credentials not provided or are placeholder values. Skipping RHSM registration."
     echo "Using UBI repositories only for lock file generation."
@@ -67,22 +67,13 @@ else
     USE_RHSM=true
 fi
 
-# 3. Validate existence of input file
+# Step 4: Validate existence of input file
 if [[ ! -f "${ABS_PROJECT_DIR}/rpms.in.yaml" ]]; then
     echo "ERROR: Input file not found at '${ABS_PROJECT_DIR}/rpms.in.yaml'." >&2
     exit 1
 fi
 
-# 4. Determine if multi-arch patch is needed by checking for an 'arches' key in the input file.
-APPLY_MULTI_ARCH_PATCH="false"
-if grep -q "^arches:" "${ABS_PROJECT_DIR}/rpms.in.yaml"; then
-    echo "Multi-arch build detected from 'arches' key in rpms.in.yaml."
-    APPLY_MULTI_ARCH_PATCH="true"
-else
-    echo "Single-arch build detected."
-fi
-
-# 5. Detect OS for podman flags
+# Step 5: Detect OS for podman flags
 PODMAN_FLAGS=""
 case "$(uname -s)" in
     Linux)
@@ -98,7 +89,7 @@ case "$(uname -s)" in
         ;;
 esac
 
-# 6. Create a temporary script file to be run inside the container.
+# Step 6: Create a temporary script file to be run inside the container.
 readonly SCRIPT_FILE_PATH="${ABS_PROJECT_DIR}/podman_script.sh"
 trap 'rm -f "${SCRIPT_FILE_PATH}"' EXIT
 
@@ -107,7 +98,7 @@ cat > "${SCRIPT_FILE_PATH}" <<EOF
 set -eux
 
 # Copy input file to output file for modifications
-echo "STEP 0: Copying rpms.in.yaml to rpms.out.yaml..."
+echo "STEP 1: Copying rpms.in.yaml to rpms.out.yaml..."
 cp /source/rpms.in.yaml /source/rpms.out.yaml
 
 # Helper function to extract repository IDs from rpms.out.yaml
@@ -121,7 +112,7 @@ extract_repo_ids() {
 }
 
 if [ "${USE_RHSM}" = "true" ]; then
-    echo "STEP 1: Registering system..."
+    echo "STEP 2: Registering system..."
     subscription-manager register --org "${RHEL9_ORG_ID}" --activationkey "${RHEL9_ACTIVATION_KEY}" --force
     subscription-manager release --set="${RHEL9_RELEASE}"
     subscription-manager refresh
@@ -148,10 +139,7 @@ if [ "${USE_RHSM}" = "true" ]; then
             --enable=codeready-builder-for-rhel-9-x86_64-rpms
     fi
 
-    echo "STEP 5: Copying repo file..."
-    cp /etc/yum.repos.d/redhat.repo /source/redhat.repo
-
-    echo "STEP 5b: Updating SSL certificate paths in rpms.out.yaml..."
+    echo "STEP 4: Updating SSL certificate paths in rpms.out.yaml..."
     # Find the actual certificate files created by RHSM registration
     CERT_FILE=\$(find /etc/pki/entitlement/ -type f -name "*.pem" ! -name "*-key.pem" | head -1)
     KEY_FILE=\$(find /etc/pki/entitlement/ -type f -name "*-key.pem" | head -1)
@@ -171,8 +159,11 @@ if [ "${USE_RHSM}" = "true" ]; then
     else
         echo "WARNING: Could not find entitlement certificates"
     fi
+
+    echo "STEP 5: Copying repo file..."
+    cp /etc/yum.repos.d/redhat.repo /source/redhat.repo
 else
-    echo "STEP 1: Skipping RHSM registration..."
+    echo "STEP 2: Skipping RHSM registration..."
     echo "STEP 3: Setting up UBI repositories..."
     cat > /etc/yum.repos.d/redhat.repo <<REPOS_EOF
 # UBI repositories (no RHSM registration required)
@@ -191,24 +182,19 @@ gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
 gpgcheck = 1
 REPOS_EOF
 
-    echo "STEP 5: Copying repo file..."
+    echo "STEP 4: Copying repo file..."
     cp /etc/yum.repos.d/redhat.repo /source/redhat.repo
 fi
 
-echo "STEP 2: Installing tools (skopeo, python3-pip)..."
+echo "STEP 5: Installing tools (skopeo, python3-pip)..."
 dnf install -y skopeo python3-pip
 
-echo "STEP 4: Installing rpm-lockfile-prototype tool..."
+echo "STEP 6: Installing rpm-lockfile-prototype tool..."
 python3 -m pip install --user https://github.com/konflux-ci/rpm-lockfile-prototype/archive/refs/heads/main.zip
 
-if [ "${APPLY_MULTI_ARCH_PATCH}" = "true" ]; then
-    echo "STEP 5a: Applying multi-arch patch to repo file..."
-    sed -i "s/\$(uname -m)/\\\$basearch/g" /source/redhat.repo
-fi
-
-echo "STEP 6: Generating lock file for image: ${IMAGE_TO_LOCK}"
+echo "STEP 7: Generating lock file for image: ${RHEL9_IMAGE_TO_LOCK}"
 /root/.local/bin/rpm-lockfile-prototype \
-    --image "${IMAGE_TO_LOCK}" \
+    --image "${RHEL9_IMAGE_TO_LOCK}" \
     --outfile="/source/rpms.lock.yaml" \
     /source/rpms.out.yaml
 
@@ -220,11 +206,11 @@ chmod +x "${SCRIPT_FILE_PATH}"
 
 # --- Execution ---
 echo -e "\n--- Starting RHEL 9 Lock File Generation for '${ABS_PROJECT_DIR}' ---"
-echo "Using execution image: ${UBI9_EXECUTION_IMAGE}"
+echo "Using execution image: ${RHEL9_EXECUTION_IMAGE}"
 echo "PREREQUISITE: You must be logged into registry.redhat.io via 'podman login'."
 echo "----------------------------------------------"
 
-podman run --rm -it ${AUTH_MOUNT_FLAG} ${PODMAN_FLAGS} -v "${ABS_PROJECT_DIR}:/source:Z" --entrypoint /source/podman_script.sh "${UBI9_EXECUTION_IMAGE}"
+podman run --rm -it ${AUTH_MOUNT_FLAG} ${PODMAN_FLAGS} -v "${ABS_PROJECT_DIR}:/source:Z" --entrypoint /source/podman_script.sh "${RHEL9_EXECUTION_IMAGE}"
 
 echo -e "\n--- Success! ---"
 echo "Generated files are located in '${ABS_PROJECT_DIR}'."
