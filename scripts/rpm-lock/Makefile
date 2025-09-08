@@ -13,6 +13,9 @@ REPO_FILE ?= redhat.repo
 # This should be configured by the caller of the Makefile
 LOCK_SCRIPT_TARGET_DIR ?= $(PROJECT_DIR)
 
+# RHEL8 and RHEL9 here refer to the collective of RHEL and UBI images for the respective versions.
+# These scripts can be used freely with rhel-els or ubi images as required.
+
 # The following variables are used for registering the system with Red Hat
 # These should be configured by the caller of the Makefile if you need to use RHSM
 RHEL9_ACTIVATION_KEY ?= ""
@@ -21,27 +24,22 @@ RHEL8_ACTIVATION_KEY ?= ""
 RHEL8_ORG_ID ?= ""
 
 # Container images - can be overridden from the command line
-RHEL9_IMAGE ?= registry.redhat.io/rhel9-4-els/rhel
-RHEL9_MINIMAL_IMAGE ?= registry.redhat.io/rhel9-4-els/rhel-minimal
+# By default, we use the UBI images as they do not require RHSM registration.
+RHEL9_IMAGE ?= registry.access.redhat.com/ubi9/ubi
+RHEL9_MINIMAL_IMAGE ?= registry.access.redhat.com/ubi9/ubi-minimal
 RHEL9_RELEASE ?= 9.4
 
-UBI8_IMAGE ?= registry.access.redhat.com/ubi8/ubi
-UBI8_MINIMAL_IMAGE ?= registry.access.redhat.com/ubi8/ubi-minimal
-UBI8_RELEASE ?= 8.10
-
-UBI9_IMAGE ?= registry.access.redhat.com/ubi9/ubi
-UBI9_MINIMAL_IMAGE ?= registry.access.redhat.com/ubi9/ubi-minimal
-UBI9_RELEASE ?= 9.4
+RHEL8_IMAGE ?= registry.access.redhat.com/ubi8/ubi
+RHEL8_MINIMAL_IMAGE ?= registry.access.redhat.com/ubi8/ubi-minimal
+RHEL8_RELEASE ?= 8.10
 
 # We use these images to run the scripts inside containers
-UBI9_EXECUTION_IMAGE ?= $(RHEL9_IMAGE):$(RHEL9_RELEASE)
-UBI8_EXECUTION_IMAGE ?= $(UBI8_IMAGE):$(UBI8_RELEASE)
-UBI9_EXECUTION_IMAGE ?= $(UBI9_IMAGE):$(UBI9_RELEASE)
+RHEL9_EXECUTION_IMAGE ?= $(RHEL9_IMAGE):$(RHEL9_RELEASE)
+RHEL8_EXECUTION_IMAGE ?= $(RHEL8_IMAGE):$(RHEL8_RELEASE)
 
 # These are the images that the packages will be installed into
 RHEL9_IMAGE_TO_LOCK ?= $(RHEL9_MINIMAL_IMAGE):$(RHEL9_RELEASE)
-UBI8_IMAGE_TO_LOCK ?= $(UBI8_MINIMAL_IMAGE):$(UBI8_RELEASE)
-UBI9_IMAGE_TO_LOCK ?= $(UBI9_MINIMAL_IMAGE):$(UBI9_RELEASE)
+RHEL8_IMAGE_TO_LOCK ?= $(RHEL8_MINIMAL_IMAGE):$(RHEL8_RELEASE)
 
 # The registry auth file is mounted into the container to allow for private registry pulls.
 # This is automatically detected and mounted into the container if it exists on the host.
@@ -106,28 +104,33 @@ test-rhel9-rhsm: ## Run RHEL 9 integration test with RHSM credentials
 generate-rhel9-locks: ## Generate RHEL 9 lock files. Override images with RHEL9_IMAGE, RHEL9_MINIMAL_IMAGE.
 	@echo "Running RHEL 9 lock file generation script..."
 	@export \
-		UBI9_EXECUTION_IMAGE=$(UBI9_EXECUTION_IMAGE) \
-		IMAGE_TO_LOCK=$(RHEL9_IMAGE_TO_LOCK) \
+		REGISTRY_AUTH_FILE=$(REGISTRY_AUTH_FILE) \
+		RHEL9_IMAGE_TO_LOCK=$(RHEL9_IMAGE_TO_LOCK) \
+		\
+		RHEL9_EXECUTION_IMAGE=$(RHEL9_EXECUTION_IMAGE) \
 		RHEL9_RELEASE=$(RHEL9_RELEASE) \
 		RHEL9_ACTIVATION_KEY=$(RHEL9_ACTIVATION_KEY) \
 		RHEL9_ORG_ID=$(RHEL9_ORG_ID) \
-		REGISTRY_AUTH_FILE=$(REGISTRY_AUTH_FILE); \
+		; \
 	$(PROJECT_DIR)/generate-rhel9-locks.sh $(LOCK_SCRIPT_TARGET_DIR)
 
 .PHONY: generate-rhel8-locks
 generate-rhel8-locks: ## Generate RHEL 8 lock files. Override images with UBI8_IMAGE, UBI9_IMAGE, etc.
 	@echo "Running RHEL 8 lock file generation script (workaround)..."
 	@export \
-		UBI8_EXECUTION_IMAGE=$(UBI8_EXECUTION_IMAGE) \
-		UBI9_EXECUTION_IMAGE=$(UBI9_EXECUTION_IMAGE) \
-		IMAGE_TO_LOCK=$(UBI8_IMAGE_TO_LOCK) \
-		UBI8_RELEASE=$(UBI8_RELEASE) \
-		UBI9_RELEASE=$(UBI9_RELEASE) \
+		RHEL8_IMAGE_TO_LOCK=$(RHEL8_IMAGE_TO_LOCK) \
+		REGISTRY_AUTH_FILE=$(REGISTRY_AUTH_FILE) \
+		\
+		RHEL8_EXECUTION_IMAGE=$(RHEL8_EXECUTION_IMAGE) \
+		RHEL8_RELEASE=$(RHEL8_RELEASE) \
 		RHEL8_ACTIVATION_KEY=$(RHEL8_ACTIVATION_KEY) \
 		RHEL8_ORG_ID=$(RHEL8_ORG_ID) \
+		\
+		RHEL9_EXECUTION_IMAGE=$(RHEL9_EXECUTION_IMAGE) \
+		RHEL9_RELEASE=$(RHEL9_RELEASE) \
 		RHEL9_ACTIVATION_KEY=$(RHEL9_ACTIVATION_KEY) \
 		RHEL9_ORG_ID=$(RHEL9_ORG_ID) \
-		REGISTRY_AUTH_FILE=$(REGISTRY_AUTH_FILE); \
+		; \
 	$(PROJECT_DIR)/generate-rhel8-locks.sh $(LOCK_SCRIPT_TARGET_DIR)
 
 .PHONY: help
@@ -138,38 +141,51 @@ help: ## Display available targets and variables.
 	@echo "This Makefile provides targets for generating RPM lock files and filtering repositories."
 	@echo ""
 	@echo "Variables:"
-	@echo "  LOCK_SCRIPT_TARGET_DIR The project directory to run the scripts against (default: .)"
-	@echo "  REPO_FILE           Path to redhat.repo file for filtering (default: redhat.repo)"
-	@echo "  RHEL9_IMAGE         Image for RHEL9 generation (default: registry.redhat.io/rhel9-4-els/rhel)"
-	@echo "  RHEL9_MINIMAL_IMAGE Image for RHEL9 minimal runtime (default: .../rhel-minimal)"
-	@echo "  RHEL9_RELEASE       Release for RHEL9 generation (default: 9.4)"
-	@echo "  UBI8_IMAGE          Image for UBI8 generation (default: registry.access.redhat.com/ubi8/ubi)"
-	@echo "  UBI8_MINIMAL_IMAGE  Minimal image for UBI8 runtime (default: .../ubi-minimal)"
-	@echo "  UBI8_RELEASE       Release for UBI8 generation (default: 8.10)"
-	@echo "  UBI9_IMAGE          Helper image for UBI8 workaround (default: registry.redhat.io/ubi9/ubi)"
-	@echo "  UBI9_RELEASE       Release for UBI9 generation (default: 9.4)"
-	@echo "  RHEL9_ACTIVATION_KEY Red Hat Activation Key for RHEL9 (default: 1234567890)"
-	@echo "  RHEL9_ORG_ID       Red Hat Organization ID for RHEL9 (default: placeholder)"
-	@echo "  RHEL8_ACTIVATION_KEY Red Hat Activation Key for RHEL8 (default: 1234567890)"
-	@echo "  RHEL8_ORG_ID       Red Hat Organization ID for RHEL8 (default: placeholder)"
+	@echo "  LOCK_SCRIPT_TARGET_DIR    The project directory to run the scripts against (default: .)"
+	@echo "  REGISTRY_AUTH_FILE        Path to registry auth file for private registry pulls (default: ~/.config/containers/auth.json)"
+	@echo "  REPO_FILE                 Path to redhat.repo file for filtering (default: redhat.repo)"
+	@echo "  RHEL8_ACTIVATION_KEY      Red Hat Activation Key for RHEL8 (default: '')"
+	@echo "  RHEL8_EXECUTION_IMAGE     Image and tag for UBI8 generation (default: \$$RHEL8_IMAGE:\$$RHEL8_RELEASE)"
+	@echo "  RHEL8_IMAGE               Image for UBI8 generation (default: registry.access.redhat.com/ubi8/ubi)"
+	@echo "  RHEL8_IMAGE_TO_LOCK       Image and tag for UBI8 minimal runtime (default: \$$RHEL8_MINIMAL_IMAGE:\$$RHEL8_RELEASE)"
+	@echo "  RHEL8_MINIMAL_IMAGE       Image for UBI8 minimal runtime (default: registry.access.redhat.com/ubi8/ubi-minimal)"
+	@echo "  RHEL8_ORG_ID              Red Hat Organization ID for RHEL8 (default: '')"
+	@echo "  RHEL8_RELEASE             Release for UBI8 generation (default: 8.10)"
+	@echo "  RHEL9_ACTIVATION_KEY      Red Hat Activation Key for RHEL9 (default: '')"
+	@echo "  RHEL9_EXECUTION_IMAGE     Image and tag for UBI9 generation (default: \$$RHEL9_IMAGE:\$$RHEL9_RELEASE)"
+	@echo "  RHEL9_IMAGE               Image for UBI9 generation (default: registry.access.redhat.com/ubi9/ubi)"
+	@echo "  RHEL9_IMAGE_TO_LOCK       Image and tagfor UBI9 minimal runtime (default: \$$RHEL9_MINIMAL_IMAGE:\$$RHEL9_RELEASE)"
+	@echo "  RHEL9_MINIMAL_IMAGE       Image for UBI9 minimal runtime (default: registry.access.redhat.com/ubi9/ubi-minimal)"
+	@echo "  RHEL9_ORG_ID              Red Hat Organization ID for RHEL9 (default: '')"
+	@echo "  RHEL9_RELEASE             Release for RHEL9 generation (default: 9.4)"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make generate-rhel9-locks LOCK_SCRIPT_TARGET_DIR=/path/to/project \\"
-	@echo "       RHEL9_ACTIVATION_KEY=1234567890 RHEL9_ORG_ID=placeholder"
+	@echo "  make generate-rhel9-locks \\"
+	@echo "       LOCK_SCRIPT_TARGET_DIR=/path/to/project \\"
+	@echo "       RHEL9_ACTIVATION_KEY=1234567890 RHEL9_ORG_ID=my-org-key \\"
+	@echo "       REGISTRY_AUTH_FILE=/path/to/auth.json"
 	@echo ""
-	@echo "  make generate-rhel9-locks RHEL9_IMAGE=my-registry/rhel9-4-els/rhel \\"
-	@echo "       RHEL9_MINIMAL_IMAGE=my-registry/rhel9-4-els/rhel-minimal \\"
-	@echo "       RHEL9_RELEASE=9.4 RHEL9_ACTIVATION_KEY=1234567890 RHEL9_ORG_ID=placeholder"
+	@echo "  make generate-rhel9-locks \\"
+	@echo "       RHEL9_IMAGE=my-registry/rhel9 \\"
+	@echo "       RHEL9_MINIMAL_IMAGE=my-registry/rhel9-minimal \\"
+	@echo "       RHEL9_RELEASE=9.4 \\"
+	@echo "       RHEL9_ACTIVATION_KEY=1234567890 RHEL9_ORG_ID=my-org-key \\"
+	@echo "       REGISTRY_AUTH_FILE=/path/to/auth.json"
 	@echo ""
-	@echo "  make generate-rhel8-locks LOCK_SCRIPT_TARGET_DIR=/path/to/project \\"
-	@echo "       RHEL8_ACTIVATION_KEY=1234567890 RHEL8_ORG_ID=placeholder \\"
-	@echo "       RHEL9_ACTIVATION_KEY=1234567890 RHEL9_ORG_ID=placeholder"
+	@echo "  make generate-rhel8-locks \\"
+	@echo "       LOCK_SCRIPT_TARGET_DIR=/path/to/project \\"
+	@echo "       RHEL8_ACTIVATION_KEY=1234567890 RHEL8_ORG_ID=my-org-key \\"
+	@echo "       RHEL9_ACTIVATION_KEY=1234567890 RHEL9_ORG_ID=my-org-key \\"
+	@echo "       REGISTRY_AUTH_FILE=/path/to/auth.json"
 	@echo ""
-	@echo "  make generate-rhel8-locks UBI8_IMAGE=my-registry/ubi \\"
-	@echo "       UBI8_MINIMAL_IMAGE=my-registry/ubi-minimal UBI8_RELEASE=8.10 \\"
-	@echo "       UBI9_IMAGE=my-registry/ubi UBI9_RELEASE=9.4 \\"
-	@echo "       RHEL8_ACTIVATION_KEY=1234567890 RHEL8_ORG_ID=placeholder \\"
-	@echo "       RHEL9_ACTIVATION_KEY=1234567890 RHEL9_ORG_ID=placeholder"
+	@echo "  make generate-rhel8-locks \\"
+	@echo "       RHEL8_IMAGE=my-registry/ubi8-minimal \\"
+	@echo "       RHEL8_RELEASE=8.10 \\"
+	@echo "       RHEL9_IMAGE=my-registry/ubi9-minimal \\"
+	@echo "       RHEL9_RELEASE=9.4 \\"
+	@echo "       RHEL8_ACTIVATION_KEY=1234567890 RHEL8_ORG_ID=my-org-key \\"
+	@echo "       RHEL9_ACTIVATION_KEY=1234567890 RHEL9_ORG_ID=my-org-key \\"
+	@echo "       REGISTRY_AUTH_FILE=/path/to/auth.json"
 	@echo ""
 	@echo "  make filter-unused-repos REPO_FILE=/path/to/file"
 	@echo ""
