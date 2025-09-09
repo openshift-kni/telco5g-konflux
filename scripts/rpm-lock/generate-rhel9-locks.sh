@@ -160,31 +160,38 @@ if [ "${USE_RHSM}" = "true" ]; then
         echo "WARNING: Could not find entitlement certificates"
     fi
 
-    echo "STEP 5: Copying repo file..."
-    cp /etc/yum.repos.d/redhat.repo /source/redhat.repo
 else
     echo "STEP 2: Skipping RHSM registration..."
-    echo "STEP 3: Setting up UBI repositories..."
-    cat > /etc/yum.repos.d/redhat.repo <<REPOS_EOF
-# UBI repositories (no RHSM registration required)
-[ubi-9-baseos]
-name = Red Hat Universal Base Image 9 (RPMs) - BaseOS
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/\\\$basearch/baseos/os
-enabled = 1
-gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-gpgcheck = 1
-
-[ubi-9-appstream]
-name = Red Hat Universal Base Image 9 (RPMs) - AppStream
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi9/9/\\\$basearch/appstream/os
-enabled = 1
-gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-gpgcheck = 1
-REPOS_EOF
-
-    echo "STEP 4: Copying repo file..."
-    cp /etc/yum.repos.d/redhat.repo /source/redhat.repo
+    echo "Will use UBI repositories and configure based on rpms.in.yaml"
 fi
+
+echo "STEP 3: Repository configuration..."
+# Note: rpm-lockfile-prototype reads repository definitions directly from rpms.in.yaml
+# and adds them dynamically, so we don't need to configure repositories in the container
+REPO_IDS=\$(extract_repo_ids)
+
+if [ -n "\$REPO_IDS" ]; then
+    echo "Repository configuration found in rpms.in.yaml (will be used by rpm-lockfile-prototype):"
+    while IFS= read -r repo_id; do
+        if [ -n "\$repo_id" ]; then
+            echo "  - \$repo_id"
+        fi
+    done <<< "\$REPO_IDS"
+else
+    echo "No specific repository configuration found in rpms.in.yaml."
+fi
+
+if [ "${USE_RHSM}" = "true" ]; then
+    echo "RHSM mode: Using subscription-based repositories for certificate access."
+else
+    echo "UBI mode: Using public UBI repositories."
+    echo "Available container repositories:"
+    dnf repolist --enabled || true
+fi
+
+echo "STEP 4: Creating repository configuration file for output..."
+# Copy the final repository configuration for output
+cp /etc/yum.repos.d/redhat.repo /source/redhat.repo 2>/dev/null || echo "# No redhat.repo found" > /source/redhat.repo
 
 echo "STEP 5: Installing tools (skopeo, python3-pip)..."
 dnf install -y skopeo python3-pip

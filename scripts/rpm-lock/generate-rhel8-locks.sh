@@ -68,31 +68,6 @@ echo "--- Step 3: Generating RHEL 8 Repository File ---"
 # Check if credentials are empty, placeholder values, or not provided
 if [[ -z "$RHEL8_ORG_ID" || -z "$RHEL8_ACTIVATION_KEY" ]]; then
     echo "RHEL 8 credentials not provided or are placeholder values. Skipping RHSM registration."
-    echo "Using UBI repositories only (no RHEL entitlements)."
-
-    # Create a minimal repo file for UBI repositories
-    readonly TEMP_REPO_FILE_PATH="${ABS_PROJECT_DIR}/${RHEL8_REPO_FILE}"
-    trap 'rm -f "${TEMP_REPO_FILE_PATH}"' EXIT
-
-    # Generate a basic UBI repo file without RHSM registration
-    cat > "${TEMP_REPO_FILE_PATH}" <<EOF
-# UBI repositories (no RHSM registration required)
-[ubi-8-baseos]
-name = Red Hat Universal Base Image 8 (RPMs) - BaseOS
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/\$basearch/baseos/os
-enabled = 1
-gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-gpgcheck = 1
-
-[ubi-8-appstream]
-name = Red Hat Universal Base Image 8 (RPMs) - AppStream
-baseurl = https://cdn-ubi.redhat.com/content/public/ubi/dist/ubi8/8/\$basearch/appstream/os
-enabled = 1
-gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
-gpgcheck = 1
-EOF
-
-    echo "Generated basic UBI repo file at '${TEMP_REPO_FILE_PATH}'"
 else
     echo "RHEL 8 credentials provided. Proceeding with RHSM registration."
 
@@ -149,11 +124,11 @@ EOF
     echo "Using execution image: ${RHEL8_EXECUTION_IMAGE}"
     podman run --rm -it ${AUTH_MOUNT_FLAG} -v "${ABS_PROJECT_DIR}:/source:Z" --entrypoint sh "${RHEL8_EXECUTION_IMAGE}" -c "${RHEL8_COMMANDS}"
 
-    if [ ! -f "${TEMP_REPO_FILE_PATH}" ]; then
+    if [ ! -f "${ABS_PROJECT_DIR}/${RHEL8_REPO_FILE}" ]; then
         echo "ERROR: Failed to generate RHEL 8 repo file." >&2
         exit 1
     fi
-    echo "Successfully generated '${TEMP_REPO_FILE_PATH}'"
+    echo "Successfully generated '${ABS_PROJECT_DIR}/${RHEL8_REPO_FILE}'"
 fi
 echo "----------------------------------------------------"
 
@@ -191,11 +166,9 @@ cat > "${SCRIPT_FILE_PATH}" <<EOF
 #!/usr/bin/env bash
 set -eux
 
-# Copy input file to output file for modifications (if not already done)
-if [ ! -f "/source/rpms.out.yaml" ]; then
-    echo "STEP 1: Copying rpms.in.yaml to rpms.out.yaml..."
-    cp /source/rpms.in.yaml /source/rpms.out.yaml
-fi
+# Copy input file to output file for modifications
+echo "STEP 1: Copying rpms.in.yaml to rpms.out.yaml..."
+cp /source/rpms.in.yaml /source/rpms.out.yaml
 
 # Helper function to extract repository IDs from rpms.out.yaml
 extract_repo_ids() {
@@ -256,9 +229,9 @@ if [ "${USE_RHSM_RHEL9}" = "true" ]; then
         echo "WARNING: Could not find entitlement certificates"
     fi
 else
-    echo "STEP 2: Skipping RHSM registration. Using basic repo file..."
-    # Just copy the repo file without certificate modifications
-    cp "/source/${RHEL8_REPO_FILE}" /source/redhat.repo
+    echo "STEP 2: Skipping RHSM registration. Using UBI repositories..."
+    # No need to copy a repo file - UBI images have repositories pre-configured
+    # We'll configure repositories using dnf/yum commands based on rpms.in.yaml
 fi
 
 echo "STEP 5: Installing tools..."
@@ -267,16 +240,32 @@ dnf install -y skopeo python3-pip &>/dev/null
 echo "STEP 6: Installing rpm-lockfile-prototype tool..."
 python3 -m pip install --user https://github.com/konflux-ci/rpm-lockfile-prototype/archive/refs/heads/main.zip &>/dev/null
 
-echo "STEP 7: Setting up repository configuration for rpm-lockfile-prototype..."
-# The rpm-lockfile-prototype tool uses system repositories, so we need to set them up properly
-if [ "${USE_RHSM_RHEL9}" = "true" ]; then
-    # RHSM registration already configured the system repos, just copy for output
-    cp /etc/yum.repos.d/redhat.repo /source/redhat.repo
+echo "STEP 7: Repository configuration for rpm-lockfile-prototype..."
+# Note: rpm-lockfile-prototype reads repository definitions directly from rpms.in.yaml
+# and adds them dynamically, so we don't need to configure repositories in the container
+REPO_IDS=\$(extract_repo_ids)
+
+if [ -n "\$REPO_IDS" ]; then
+    echo "Repository configuration found in rpms.in.yaml (will be used by rpm-lockfile-prototype):"
+    while IFS= read -r repo_id; do
+        if [ -n "\$repo_id" ]; then
+            echo "  - \$repo_id"
+        fi
+    done <<< "\$REPO_IDS"
 else
-    # No RHSM registration, so we need to manually set up the system repositories
-    # Copy our custom UBI repo file to the system location
-    cp /source/redhat.repo /etc/yum.repos.d/redhat.repo
+    echo "No specific repository configuration found in rpms.in.yaml."
 fi
+
+if [ "${USE_RHSM_RHEL9}" = "true" ]; then
+    echo "RHSM mode: Using subscription-based repositories for certificate access."
+else
+    echo "UBI mode: Using public UBI repositories."
+    echo "Available container repositories:"
+    dnf repolist --enabled || true
+fi
+
+# Copy the final repository configuration for output
+cp /etc/yum.repos.d/redhat.repo /source/redhat.repo 2>/dev/null || echo "# No redhat.repo found" > /source/redhat.repo
 
 echo "STEP 8: Generating lock file for image: ${RHEL8_IMAGE_TO_LOCK}"
 /root/.local/bin/rpm-lockfile-prototype \
