@@ -117,26 +117,20 @@ if [ "${USE_RHSM}" = "true" ]; then
     subscription-manager release --set="${RHEL9_RELEASE}"
     subscription-manager refresh
 
-    echo "STEP 3: Configuring repositories..."
-    # Extract repository IDs from rpms.in.yaml if it exists
+    echo "STEP 3: RHSM registration complete..."
+    # Note: Repository configuration will be handled by rpm-lockfile-prototype
+    # which reads repository definitions directly from rpms.in.yaml
     REPO_IDS=\$(extract_repo_ids)
 
     if [ -n "\$REPO_IDS" ]; then
-        echo "Found repository configurations in rpms.in.yaml. Enabling specified repositories..."
-        subscription-manager repos --disable='*'
+        echo "Repository configuration found in rpms.in.yaml (will be used by rpm-lockfile-prototype):"
         while IFS= read -r repo_id; do
             if [ -n "\$repo_id" ]; then
-                echo "Enabling repository: \$repo_id"
-                subscription-manager repos --enable="\$repo_id" || echo "Warning: Could not enable \$repo_id"
+                echo "  - \$repo_id"
             fi
         done <<< "\$REPO_IDS"
     else
-        echo "No repository configuration found in rpms.in.yaml. Using default repositories..."
-        subscription-manager repos \
-            --disable='*' \
-            --enable=rhel-9-for-x86_64-baseos-rpms \
-            --enable=rhel-9-for-x86_64-appstream-rpms \
-            --enable=codeready-builder-for-rhel-9-x86_64-rpms
+        echo "No specific repository configuration found in rpms.in.yaml."
     fi
 
     echo "STEP 4: Updating SSL certificate paths in rpms.out.yaml..."
