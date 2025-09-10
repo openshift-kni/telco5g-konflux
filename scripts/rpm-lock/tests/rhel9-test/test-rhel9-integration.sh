@@ -86,7 +86,7 @@ fi
 echo
 echo "Test 2: Validate input file structure"
 EXPECTED_PACKAGES=("jq" "less" "findutils" "procps-ng")
-EXPECTED_REPOS=("ubi-9-baseos" "ubi-9-appstream")
+EXPECTED_REPOS=("ubi-9-for-x86_64-baseos-rpms" "ubi-9-for-x86_64-appstream-rpms" "ubi-9-for-aarch64-baseos-rpms" "ubi-9-for-aarch64-appstream-rpms")
 
 # Check packages
 FOUND_PACKAGES=()
@@ -168,19 +168,19 @@ if [[ "$PODMAN_AVAILABLE" == "true" ]]; then
     if [[ -f "$TEST_DIR/redhat.repo" ]]; then
         print_test_result "Generated redhat.repo file" "PASS"
 
-        # Validate repo file content based on test mode
+        # Validate that the lock file contains the expected architecture-specific repository IDs
         if [[ "$TEST_MODE" == "UBI" ]]; then
-            if grep -q "ubi-9-baseos" "$TEST_DIR/redhat.repo"; then
-                print_test_result "UBI repositories in repo file" "PASS" "Found UBI repository configurations"
+            if grep -q "ubi-9-for-.*-baseos-rpms\|ubi-9-for-.*-appstream-rpms" "$TEST_DIR/rpms.lock.yaml"; then
+                print_test_result "UBI Architecture-specific repositories in lock file" "PASS" "Found architecture-specific repository IDs in lock file"
             else
-                print_test_result "UBI repositories in repo file" "FAIL" "UBI repositories not found"
+                print_test_result "UBI Architecture-specific repositories in lock file" "FAIL" "Architecture-specific repository IDs not found in lock file"
             fi
         else
-            # RHSM mode - check for subscription-based repositories
-            if grep -q "rhel-9-for-.*-baseos-rpms\|rhel-9-for-.*-appstream-rpms" "$TEST_DIR/redhat.repo"; then
-                print_test_result "RHEL repositories in repo file" "PASS" "Found RHEL repository configurations"
+            # RHSM mode - check for subscription-based repositories in lock file
+            if grep -q "rhel-9-for-.*-baseos-rpms\|rhel-9-for-.*-appstream-rpms" "$TEST_DIR/rpms.lock.yaml"; then
+                print_test_result "RHEL Architecture-specific repositories in lock file" "PASS" "Found architecture-specific repository IDs in lock file"
             else
-                print_test_result "RHEL repositories in repo file" "FAIL" "RHEL repositories not found"
+                print_test_result "RHEL Architecture-specific repositories in lock file" "FAIL" "Architecture-specific repository IDs not found in lock file"
             fi
         fi
     else
