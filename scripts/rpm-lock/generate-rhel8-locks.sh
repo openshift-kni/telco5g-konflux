@@ -96,23 +96,18 @@ subscription-manager refresh
 # Configure repositories based on rpms.in.yaml if it exists
 REPO_IDS=\$(extract_repo_ids)
 
-echo "STEP 3: Configuring repositories..."
+echo "STEP 3: RHEL 8 RHSM registration complete..."
+# Note: Repository configuration will be handled by rpm-lockfile-prototype
+# which reads repository definitions directly from rpms.in.yaml
 if [ -n "\$REPO_IDS" ]; then
-    echo "Found repository configurations in rpms.in.yaml. Enabling specified repositories..."
-    subscription-manager repos --disable='*'
+    echo "Repository configuration found in rpms.in.yaml (will be used by rpm-lockfile-prototype):"
     while IFS= read -r repo_id; do
         if [ -n "\$repo_id" ]; then
-            echo "Enabling repository: \$repo_id"
-            subscription-manager repos --enable="\$repo_id" || echo "Warning: Could not enable \$repo_id"
+            echo "  - \$repo_id"
         fi
     done <<< "\$REPO_IDS"
 else
-    echo "No repository configuration found in rpms.in.yaml. Using default repositories..."
-    subscription-manager repos \
-        --disable='*' \
-        --enable=rhel-8-for-x86_64-baseos-rpms \
-        --enable=rhel-8-for-x86_64-appstream-rpms \
-        --enable=codeready-builder-for-rhel-8-x86_64-rpms
+    echo "No specific repository configuration found in rpms.in.yaml."
 fi
 
 echo "STEP 4: Copying generated repo file to /source..."
@@ -189,23 +184,18 @@ if [ "${USE_RHSM_RHEL9}" = "true" ]; then
     # Configure repositories based on rpms.in.yaml if it exists
     REPO_IDS=\$(extract_repo_ids)
 
-    echo "STEP 3: Configuring repositories..."
+    echo "STEP 3: RHEL 9 RHSM registration complete..."
+    # Note: Repository configuration will be handled by rpm-lockfile-prototype
+    # which reads repository definitions directly from rpms.in.yaml
     if [ -n "\$REPO_IDS" ]; then
-        echo "Found repository configurations in rpms.in.yaml. Enabling specified repositories..."
-        subscription-manager repos --disable='*'
+        echo "Repository configuration found in rpms.in.yaml (will be used by rpm-lockfile-prototype):"
         while IFS= read -r repo_id; do
             if [ -n "\$repo_id" ]; then
-                echo "Enabling repository: \$repo_id"
-                subscription-manager repos --enable="\$repo_id" || echo "Warning: Could not enable \$repo_id"
+                echo "  - \$repo_id"
             fi
         done <<< "\$REPO_IDS"
     else
-        echo "No repository configuration found in rpms.in.yaml. Using default repositories..."
-        subscription-manager repos \
-            --disable='*' \
-            --enable=rhel-9-for-x86_64-baseos-rpms \
-            --enable=rhel-9-for-x86_64-appstream-rpms \
-            --enable=codeready-builder-for-rhel-9-x86_64-rpms
+        echo "No specific repository configuration found in rpms.in.yaml."
     fi
 
     echo "STEP 4: Finding RHEL 9 entitlement certificates and updating repo file..."
