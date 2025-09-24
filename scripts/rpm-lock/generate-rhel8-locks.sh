@@ -71,7 +71,7 @@ if [[ -z "$RHEL8_ORG_ID" || -z "$RHEL8_ACTIVATION_KEY" ]]; then
 else
     echo "RHEL 8 credentials provided. Proceeding with RHSM registration."
 
-    read -r -d '' RHEL8_COMMANDS <<EOF
+    RHEL8_COMMANDS=$(cat <<EOF
 set -eux
 
 # Copy input file to output file for modifications
@@ -82,8 +82,8 @@ cp /source/rpms.in.yaml /source/rpms.out.yaml
 extract_repo_ids() {
     if [ -f "/source/rpms.out.yaml" ]; then
         # Extract repoid values from the YAML file
-        grep -E '^[[:space:]]*-[[:space:]]*repoid:' /source/rpms.out.yaml | \
-            sed 's/^[[:space:]]*-[[:space:]]*repoid:[[:space:]]*//' | \
+        grep -E '^[[:space:]]*-[[:space:]]*repoid:' /source/rpms.out.yaml | \\
+            sed 's/^[[:space:]]*-[[:space:]]*repoid:[[:space:]]*//' | \\
             tr -d '"'"'"
     fi
 }
@@ -114,6 +114,7 @@ echo "STEP 4: Copying generated repo file to /source..."
 cp /etc/yum.repos.d/redhat.repo "/source/${RHEL8_REPO_FILE}"
 echo "Process complete."
 EOF
+)
 
     echo "Running container to extract RHEL 8 repo file into '${ABS_PROJECT_DIR}'..."
     echo "Using execution image: ${RHEL8_EXECUTION_IMAGE}"
