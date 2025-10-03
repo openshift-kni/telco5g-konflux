@@ -13,6 +13,10 @@ REPO_FILE ?= redhat.repo
 # This should be configured by the caller of the Makefile
 LOCK_SCRIPT_TARGET_DIR ?= $(PROJECT_DIR)
 
+# The version of rpm-lockfile-prototype to use.
+# Valid values are "main" or a commit hash.
+RPM_LOCKFILE_PROTOTYPE_VERSION ?= main
+
 # RHEL8 and RHEL9 here refer to the collective of RHEL and UBI images for the respective versions.
 # These scripts can be used freely with rhel-els or ubi images as required.
 
@@ -69,7 +73,8 @@ test-integration-rhsm: ## Run integration tests with RHSM credentials (requires 
 		RHEL8_ACTIVATION_KEY=$(RHEL8_ACTIVATION_KEY) \
 		RHEL8_ORG_ID=$(RHEL8_ORG_ID) \
 		RHEL9_ACTIVATION_KEY=$(RHEL9_ACTIVATION_KEY) \
-		RHEL9_ORG_ID=$(RHEL9_ORG_ID); \
+		RHEL9_ORG_ID=$(RHEL9_ORG_ID) \
+		RPM_LOCKFILE_PROTOTYPE_VERSION=$(RPM_LOCKFILE_PROTOTYPE_VERSION); \
 	cd $(PROJECT_DIR)/tests && ./run-integration-tests.sh $(if $(VERBOSE),--verbose)
 
 .PHONY: test-rhel8-only
@@ -89,7 +94,8 @@ test-rhel8-rhsm: ## Run RHEL 8 integration test with RHSM credentials
 		RHEL8_ACTIVATION_KEY=$(RHEL8_ACTIVATION_KEY) \
 		RHEL8_ORG_ID=$(RHEL8_ORG_ID) \
 		RHEL9_ACTIVATION_KEY=$(RHEL9_ACTIVATION_KEY) \
-		RHEL9_ORG_ID=$(RHEL9_ORG_ID); \
+		RHEL9_ORG_ID=$(RHEL9_ORG_ID) \
+		RPM_LOCKFILE_PROTOTYPE_VERSION=$(RPM_LOCKFILE_PROTOTYPE_VERSION); \
 	cd $(PROJECT_DIR)/tests && ./run-integration-tests.sh --rhel8-only $(if $(VERBOSE),--verbose)
 
 .PHONY: test-rhel9-rhsm
@@ -97,7 +103,8 @@ test-rhel9-rhsm: ## Run RHEL 9 integration test with RHSM credentials
 	@echo "Running RHEL 9 integration test in RHSM mode..."
 	@export \
 		RHEL9_ACTIVATION_KEY=$(RHEL9_ACTIVATION_KEY) \
-		RHEL9_ORG_ID=$(RHEL9_ORG_ID); \
+		RHEL9_ORG_ID=$(RHEL9_ORG_ID) \
+		RPM_LOCKFILE_PROTOTYPE_VERSION=$(RPM_LOCKFILE_PROTOTYPE_VERSION); \
 	cd $(PROJECT_DIR)/tests && ./run-integration-tests.sh --rhel9-only $(if $(VERBOSE),--verbose)
 
 .PHONY: generate-rhel9-locks
@@ -106,6 +113,7 @@ generate-rhel9-locks: ## Generate RHEL 9 lock files. Override images with RHEL9_
 	@export \
 		REGISTRY_AUTH_FILE=$(REGISTRY_AUTH_FILE) \
 		RHEL9_IMAGE_TO_LOCK=$(RHEL9_IMAGE_TO_LOCK) \
+		RPM_LOCKFILE_PROTOTYPE_VERSION=$(RPM_LOCKFILE_PROTOTYPE_VERSION) \
 		\
 		RHEL9_EXECUTION_IMAGE=$(RHEL9_EXECUTION_IMAGE) \
 		RHEL9_RELEASE=$(RHEL9_RELEASE) \
@@ -120,6 +128,7 @@ generate-rhel8-locks: ## Generate RHEL 8 lock files. Override images with UBI8_I
 	@export \
 		RHEL8_IMAGE_TO_LOCK=$(RHEL8_IMAGE_TO_LOCK) \
 		REGISTRY_AUTH_FILE=$(REGISTRY_AUTH_FILE) \
+		RPM_LOCKFILE_PROTOTYPE_VERSION=$(RPM_LOCKFILE_PROTOTYPE_VERSION) \
 		\
 		RHEL8_EXECUTION_IMAGE=$(RHEL8_EXECUTION_IMAGE) \
 		RHEL8_RELEASE=$(RHEL8_RELEASE) \

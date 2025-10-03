@@ -28,6 +28,9 @@ RHEL8_ORG_ID="${RHEL8_ORG_ID:-}"
 RHEL9_ACTIVATION_KEY="${RHEL9_ACTIVATION_KEY:-}"
 RHEL9_ORG_ID="${RHEL9_ORG_ID:-}"
 
+# The version of rpm-lockfile-prototype to use. Defaults to main.
+RPM_LOCKFILE_PROTOTYPE_VERSION="${RPM_LOCKFILE_PROTOTYPE_VERSION:-main}"
+
 # The registry auth file is mounted into the container to allow for private registry pulls.
 # This is automatically detected and mounted into the container if it exists on the host.
 # If it does not exist, a warning is printed and the registry pulls may fail if not public.
@@ -229,7 +232,8 @@ echo "STEP 5: Installing tools..."
 dnf install -y skopeo python3-pip &>/dev/null
 
 echo "STEP 6: Installing rpm-lockfile-prototype tool..."
-python3 -m pip install --user https://github.com/konflux-ci/rpm-lockfile-prototype/archive/refs/heads/main.zip &>/dev/null
+echo "Using version: ${RPM_LOCKFILE_PROTOTYPE_VERSION}"
+python3 -m pip install --user "https://github.com/konflux-ci/rpm-lockfile-prototype/archive/${RPM_LOCKFILE_PROTOTYPE_VERSION}.zip" &>/dev/null
 
 echo "STEP 7: Repository configuration for rpm-lockfile-prototype..."
 # Note: rpm-lockfile-prototype reads repository definitions directly from rpms.in.yaml

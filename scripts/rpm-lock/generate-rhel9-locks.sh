@@ -24,6 +24,9 @@ RHEL9_IMAGE_TO_LOCK="${RHEL9_IMAGE_TO_LOCK:-${RHEL9_EXECUTION_IMAGE}}"
 RHEL9_ACTIVATION_KEY="${RHEL9_ACTIVATION_KEY:-}"
 RHEL9_ORG_ID="${RHEL9_ORG_ID:-}"
 
+# The version of rpm-lockfile-prototype to use. Defaults to main.
+RPM_LOCKFILE_PROTOTYPE_VERSION="${RPM_LOCKFILE_PROTOTYPE_VERSION:-main}"
+
 # The registry auth file is mounted into the container to allow for private registry pulls.
 # This is automatically detected and mounted into the container if it exists on the host.
 # If it does not exist, a warning is printed and the registry pulls may fail if not public.
@@ -191,7 +194,8 @@ echo "STEP 5: Installing tools (skopeo, python3-pip)..."
 dnf install -y skopeo python3-pip
 
 echo "STEP 6: Installing rpm-lockfile-prototype tool..."
-python3 -m pip install --user https://github.com/konflux-ci/rpm-lockfile-prototype/archive/refs/heads/main.zip
+echo "Using version: ${RPM_LOCKFILE_PROTOTYPE_VERSION}"
+python3 -m pip install --user "https://github.com/konflux-ci/rpm-lockfile-prototype/archive/${RPM_LOCKFILE_PROTOTYPE_VERSION}.zip" &>/dev/null
 
 echo "STEP 7: Generating lock file for image: ${RHEL9_IMAGE_TO_LOCK}"
 /root/.local/bin/rpm-lockfile-prototype \
