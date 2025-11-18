@@ -12,8 +12,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)"
 
 # --- Configuration ---
-RHEL8_RELEASE="${RHEL8_RELEASE:-8.10}"
-RHEL9_RELEASE="${RHEL9_RELEASE:-9.4}"
+RHEL8_RELEASE="${RHEL8_RELEASE:-latest}"
+RHEL9_RELEASE="${RHEL9_RELEASE:-latest}"
 
 # The images used to RUN the containers, which need subscription-manager.
 RHEL8_EXECUTION_IMAGE="${RHEL8_EXECUTION_IMAGE:-registry.access.redhat.com/ubi8/ubi:${RHEL8_RELEASE}}"
@@ -93,15 +93,30 @@ extract_repo_ids() {
 
 echo "STEP 2: Registering system to RHEL 8..."
 subscription-manager register --org "${RHEL8_ORG_ID}" --activationkey "${RHEL8_ACTIVATION_KEY}" --force
-subscription-manager release --set="${RHEL8_RELEASE}"
+if [ "${RHEL8_RELEASE}" != "latest" ]; then
+    echo "Setting RHEL 8 release to ${RHEL8_RELEASE}"
+    subscription-manager release --set="${RHEL8_RELEASE}"
+else
+    echo "Using latest RHEL 8 release"
+fi
+
 subscription-manager refresh
+
+# Disable all repositories and enable only what we need for skopeo and python3-pip
+echo "Disabling all repositories..."
+subscription-manager repos --disable="*" || echo "Could not disable all repositories"
+
+echo "Enabling minimal repositories for skopeo and python3-pip..."
+subscription-manager repos --enable="rhel-8-for-x86_64-baseos-rpms" || echo "Could not enable rhel-8-for-x86_64-baseos-rpms"
+subscription-manager repos --enable="rhel-8-for-x86_64-appstream-rpms" || echo "Could not enable rhel-8-for-x86_64-appstream-rpms"
 
 # Configure repositories based on rpms.in.yaml if it exists
 REPO_IDS=\$(extract_repo_ids)
 
 echo "STEP 3: RHEL 8 RHSM registration complete..."
-# Note: Repository configuration will be handled by rpm-lockfile-prototype
+# Note: Repository configuration for the lock file will be handled by rpm-lockfile-prototype
 # which reads repository definitions directly from rpms.in.yaml
+# This is separate from the repository configuration for this runtime container.
 if [ -n "\$REPO_IDS" ]; then
     echo "Repository configuration found in rpms.in.yaml (will be used by rpm-lockfile-prototype):"
     while IFS= read -r repo_id; do
@@ -182,15 +197,29 @@ extract_repo_ids() {
 if [ "${USE_RHSM_RHEL9}" = "true" ]; then
     echo "STEP 2: Registering system to RHEL 9 to get valid certs..."
     subscription-manager register --org "${RHEL9_ORG_ID}" --activationkey "${RHEL9_ACTIVATION_KEY}" --force
-    subscription-manager release --set="${RHEL9_RELEASE}"
+    if [ "${RHEL9_RELEASE}" != "latest" ]; then
+        echo "Setting RHEL 9 release to ${RHEL9_RELEASE}"
+        subscription-manager release --set="${RHEL9_RELEASE}"
+    else
+        echo "Using latest RHEL 9 release"
+    fi
     subscription-manager refresh
+
+    # Disable all repositories and enable only what we need for skopeo and python3-pip
+    echo "Disabling all repositories..."
+    subscription-manager repos --disable="*" || echo "Could not disable all repositories"
+
+    echo "Enabling minimal repositories for skopeo and python3-pip..."
+    subscription-manager repos --enable="rhel-9-for-x86_64-baseos-rpms" || echo "Could not enable rhel-9-for-x86_64-baseos-rpms"
+    subscription-manager repos --enable="rhel-9-for-x86_64-appstream-rpms" || echo "Could not enable rhel-9-for-x86_64-appstream-rpms"
 
     # Configure repositories based on rpms.in.yaml if it exists
     REPO_IDS=\$(extract_repo_ids)
 
     echo "STEP 3: RHEL 9 RHSM registration complete..."
-    # Note: Repository configuration will be handled by rpm-lockfile-prototype
+    # Note: Repository configuration for the lock file will be handled by rpm-lockfile-prototype
     # which reads repository definitions directly from rpms.in.yaml
+    # This is separate from the repository configuration for this runtime container.
     if [ -n "\$REPO_IDS" ]; then
         echo "Repository configuration found in rpms.in.yaml (will be used by rpm-lockfile-prototype):"
         while IFS= read -r repo_id; do

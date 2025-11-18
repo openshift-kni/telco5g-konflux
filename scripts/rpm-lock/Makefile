@@ -31,11 +31,11 @@ RHEL8_ORG_ID ?= ""
 # By default, we use the UBI images as they do not require RHSM registration.
 RHEL9_IMAGE ?= registry.access.redhat.com/ubi9/ubi
 RHEL9_MINIMAL_IMAGE ?= registry.access.redhat.com/ubi9/ubi-minimal
-RHEL9_RELEASE ?= 9.4
+RHEL9_RELEASE ?= "latest"
 
 RHEL8_IMAGE ?= registry.access.redhat.com/ubi8/ubi
 RHEL8_MINIMAL_IMAGE ?= registry.access.redhat.com/ubi8/ubi-minimal
-RHEL8_RELEASE ?= 8.10
+RHEL8_RELEASE ?= "latest"
 
 # We use these images to run the scripts inside containers
 RHEL9_EXECUTION_IMAGE ?= $(RHEL9_IMAGE):$(RHEL9_RELEASE)
@@ -159,14 +159,14 @@ help: ## Display available targets and variables.
 	@echo "  RHEL8_IMAGE_TO_LOCK       Image and tag for UBI8 minimal runtime (default: \$$RHEL8_MINIMAL_IMAGE:\$$RHEL8_RELEASE)"
 	@echo "  RHEL8_MINIMAL_IMAGE       Image for UBI8 minimal runtime (default: registry.access.redhat.com/ubi8/ubi-minimal)"
 	@echo "  RHEL8_ORG_ID              Red Hat Organization ID for RHEL8 (default: '')"
-	@echo "  RHEL8_RELEASE             Release for UBI8 generation (default: 8.10)"
+	@echo "  RHEL8_RELEASE             Release for UBI8 generation (default: latest)"
 	@echo "  RHEL9_ACTIVATION_KEY      Red Hat Activation Key for RHEL9 (default: '')"
 	@echo "  RHEL9_EXECUTION_IMAGE     Image and tag for UBI9 generation (default: \$$RHEL9_IMAGE:\$$RHEL9_RELEASE)"
 	@echo "  RHEL9_IMAGE               Image for UBI9 generation (default: registry.access.redhat.com/ubi9/ubi)"
 	@echo "  RHEL9_IMAGE_TO_LOCK       Image and tagfor UBI9 minimal runtime (default: \$$RHEL9_MINIMAL_IMAGE:\$$RHEL9_RELEASE)"
 	@echo "  RHEL9_MINIMAL_IMAGE       Image for UBI9 minimal runtime (default: registry.access.redhat.com/ubi9/ubi-minimal)"
 	@echo "  RHEL9_ORG_ID              Red Hat Organization ID for RHEL9 (default: '')"
-	@echo "  RHEL9_RELEASE             Release for RHEL9 generation (default: 9.4)"
+	@echo "  RHEL9_RELEASE             Release for RHEL9 generation (default: latest)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make generate-rhel9-locks \\"
@@ -177,7 +177,7 @@ help: ## Display available targets and variables.
 	@echo "  make generate-rhel9-locks \\"
 	@echo "       RHEL9_IMAGE=my-registry/rhel9 \\"
 	@echo "       RHEL9_MINIMAL_IMAGE=my-registry/rhel9-minimal \\"
-	@echo "       RHEL9_RELEASE=9.4 \\"
+	@echo "       RHEL9_RELEASE=latest \\"
 	@echo "       RHEL9_ACTIVATION_KEY=1234567890 RHEL9_ORG_ID=my-org-key \\"
 	@echo "       REGISTRY_AUTH_FILE=/path/to/auth.json"
 	@echo ""
@@ -189,9 +189,9 @@ help: ## Display available targets and variables.
 	@echo ""
 	@echo "  make generate-rhel8-locks \\"
 	@echo "       RHEL8_IMAGE=my-registry/ubi8-minimal \\"
-	@echo "       RHEL8_RELEASE=8.10 \\"
+	@echo "       RHEL8_RELEASE=latest \\"
 	@echo "       RHEL9_IMAGE=my-registry/ubi9-minimal \\"
-	@echo "       RHEL9_RELEASE=9.4 \\"
+	@echo "       RHEL9_RELEASE=latest \\"
 	@echo "       RHEL8_ACTIVATION_KEY=1234567890 RHEL8_ORG_ID=my-org-key \\"
 	@echo "       RHEL9_ACTIVATION_KEY=1234567890 RHEL9_ORG_ID=my-org-key \\"
 	@echo "       REGISTRY_AUTH_FILE=/path/to/auth.json"
