@@ -3,6 +3,7 @@
 aliases:
   telco5g-konflux-reviewers:
     - abraham2512
+    - by2waysprojects
     - fontivan
     - rauhersu
     - sabbir-47
@@ -10,6 +11,7 @@ aliases:
     - yanirq
   telco5g-konflux-approvers:
     - abraham2512
+    - by2waysprojects
     - fontivan
     - rauhersu
     - sabbir-47
