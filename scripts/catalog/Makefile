@@ -19,7 +19,8 @@ OPERATOR_SDK ?= $(TOOL_DIR)/operator-sdk
 CATALOG_TEMPLATE_FILE_INPUT ?= .konflux/catalog/catalog-template.in.yaml
 CATALOG_TEMPLATE_FILE_OUTPUT ?= .konflux/catalog/catalog-template.out.yaml
 BUNDLE_BUILDS_FILE ?= .konflux/catalog/bundle.builds.in.yaml
-CATALOG_FILE ?= catalog.yaml
+CATALOG_OUTPUT_FORMAT ?= yaml
+CATALOG_FILE ?= catalog.$(CATALOG_OUTPUT_FORMAT)
 
 # Konflux-specific variables
 CATALOG_TEMPLATE_KONFLUX_INPUT ?= $(CATALOG_TEMPLATE_FILE_INPUT)
@@ -106,13 +107,13 @@ konflux-validate-catalog: opm ## Validate the current catalog file
 konflux-generate-catalog: yq opm ## Generate a quay.io catalog for OCP 4.17 and newer
 	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-input-file $(CATALOG_TEMPLATE_KONFLUX_INPUT) --set-catalog-template-output-file $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
 	touch $(CATALOG_KONFLUX)
-	$(OPM) alpha render-template basic --output yaml --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) > $(CATALOG_KONFLUX)
+	$(OPM) alpha render-template basic --output $(CATALOG_OUTPUT_FORMAT) --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) > $(CATALOG_KONFLUX)
 
 .PHONY: konflux-generate-catalog-legacy
 konflux-generate-catalog-legacy: yq opm ## Generate a quay.io catalog for OCP 4.16 and older
 	$(SCRIPT_DIR)/konflux-update-catalog-template.sh --set-catalog-template-input-file $(CATALOG_TEMPLATE_KONFLUX_INPUT) --set-catalog-template-output-file $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) --set-bundle-builds-file $(BUNDLE_BUILDS_FILE)
 	touch $(CATALOG_KONFLUX)
-	$(OPM) alpha render-template basic --output yaml $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) > $(CATALOG_KONFLUX)
+	$(OPM) alpha render-template basic --output $(CATALOG_OUTPUT_FORMAT) $(CATALOG_TEMPLATE_KONFLUX_OUTPUT) > $(CATALOG_KONFLUX)
 
 .PHONY: konflux-generate-catalog-production
 konflux-generate-catalog-production: konflux-generate-catalog ## Generate a registry.redhat.io catalog for OCP 4.17 and newer

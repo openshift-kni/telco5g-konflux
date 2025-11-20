@@ -51,6 +51,40 @@ verbose_log() {
     fi
 }
 
+# Function to detect file format (json or yaml)
+# Handles both standard JSON (single object/array) and FBC format (multiple JSON objects)
+detect_file_format() {
+    local file="$1"
+    local filename
+    local first_chars
+
+    # Check file extension first
+    filename=$(basename "$file")
+    if [[ "$filename" == *.json ]] || [[ "$filename" == *.jsonl ]]; then
+        echo "json"
+        return 0
+    elif [[ "$filename" == *.yaml ]] || [[ "$filename" == *.yml ]]; then
+        echo "yaml"
+        return 0
+    fi
+
+    # If extension doesn't help, check file content
+    # Read first few characters to detect format
+    first_chars=$(head -c 100 "$file" 2>/dev/null | tr -d '[:space:]' || echo "")
+
+    # JSON (standard or FBC format with multiple objects) typically starts with { or [
+    # Both single JSON objects and FBC format (multiple JSON objects) start with {
+    if [[ "$first_chars" =~ ^[\{\[] ]]; then
+        echo "json"
+        return 0
+    fi
+
+    # YAML can start with various characters, but if it's not JSON, assume YAML
+    # This is a heuristic - YAML is more permissive
+    echo "yaml"
+    return 0
+}
+
 # Function to calculate SHA256 checksum in a cross-platform way
 calculate_sha256() {
     local file="$1"
@@ -212,9 +246,13 @@ fi
 
 # Determine the actual catalog file path
 if [[ -d "$CATALOG_PATH" ]]; then
-    CATALOG_FILE="$CATALOG_PATH/catalog.yaml"
-    if [[ ! -f "$CATALOG_FILE" ]]; then
-        echo "ERROR: catalog.yaml not found in directory: $CATALOG_PATH" >&2
+    # Try to find catalog.yaml or catalog.json in the directory
+    if [[ -f "$CATALOG_PATH/catalog.yaml" ]]; then
+        CATALOG_FILE="$CATALOG_PATH/catalog.yaml"
+    elif [[ -f "$CATALOG_PATH/catalog.json" ]]; then
+        CATALOG_FILE="$CATALOG_PATH/catalog.json"
+    else
+        echo "ERROR: Neither catalog.yaml nor catalog.json found in directory: $CATALOG_PATH" >&2
         exit 1
     fi
 else
@@ -261,14 +299,30 @@ if ! "$CONTAINER_RUNTIME" run --rm --platform "$USED_PLATFORM" --entrypoint /bin
     exit 1
 fi
 
-# Find the upstream catalog file
-UPSTREAM_CATALOG_FILE=$(find "$EXTRACT_DIR" -name "catalog.yaml" | head -1)
+# Find the upstream catalog file (try both yaml and json)
+UPSTREAM_CATALOG_FILE=$(find "$EXTRACT_DIR" \( -name "catalog.yaml" -o -name "catalog.json" \) | head -1)
 if [[ -z "$UPSTREAM_CATALOG_FILE" ]]; then
-    echo "ERROR: No catalog.yaml found in upstream image" >&2
+    echo "ERROR: No catalog.yaml or catalog.json found in upstream image" >&2
     exit 1
 fi
 
 verbose_log "Found upstream catalog: $UPSTREAM_CATALOG_FILE"
+
+# Detect formats of both catalogs
+GENERATED_FORMAT=$(detect_file_format "$CATALOG_FILE")
+UPSTREAM_FORMAT=$(detect_file_format "$UPSTREAM_CATALOG_FILE")
+
+log "Generated catalog format: $GENERATED_FORMAT"
+log "Upstream catalog format: $UPSTREAM_FORMAT"
+
+# Validate that both catalogs have the same format
+if [[ "$GENERATED_FORMAT" != "$UPSTREAM_FORMAT" ]]; then
+    echo "ERROR: Catalog formats do not match!" >&2
+    echo "   - Generated catalog format: $GENERATED_FORMAT ($CATALOG_FILE)" >&2
+    echo "   - Upstream catalog format: $UPSTREAM_FORMAT ($UPSTREAM_CATALOG_FILE)" >&2
+    echo "   Cannot compare catalogs with different formats." >&2
+    exit 1
+fi
 
 # Get file sizes
 GENERATED_SIZE=$(wc -l < "$CATALOG_FILE")

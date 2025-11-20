@@ -8,11 +8,44 @@ set -o pipefail
 
 SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 
+detect_file_type() {
+    local file="$1"
+
+    # Check by file extension first
+    if [[ "$file" =~ \.(json|jsonl)$ ]]; then
+        echo "json"
+        return 0
+    elif [[ "$file" =~ \.(yaml|yml)$ ]]; then
+        echo "yaml"
+        return 0
+    fi
+
+    # Check by content (first non-whitespace character)
+    local first_char
+    first_char=$(head -c 1 "$file" 2>/dev/null | tr -d '[:space:]' || echo "")
+
+    if [[ "$first_char" == "{" ]]; then
+        echo "json"
+    elif [[ "$first_char" == "-" ]] || [[ "$first_char" == "#" ]]; then
+        echo "yaml"
+    else
+        # Default to yaml if we can't determine
+        echo "yaml"
+    fi
+}
+
 check_preconditions() {
     echo "Checking pre-conditions..."
 
-    # yq must be installed
-    command -v yq >/dev/null 2>&1 || { echo "Error: yq seems not to be installed." >&2; exit 1; }
+    # Check for required tools based on file type
+    local file_type
+    file_type=$(detect_file_type "$ARG_CATALOG_FILE")
+
+    if [[ "$file_type" == "json" ]]; then
+        command -v jq >/dev/null 2>&1 || { echo "Error: jq is required for JSON files but seems not to be installed." >&2; exit 1; }
+    else
+        command -v yq >/dev/null 2>&1 || { echo "Error: yq is required for YAML files but seems not to be installed." >&2; exit 1; }
+    fi
 
     echo "Checking pre-conditions completed!"
     return 0
@@ -63,17 +96,45 @@ parse_args() {
 validate_related_images() {
     echo "Validating related images..."
 
-    # validate .entries exists
-    if ! yq e '.relatedImages | type == "!!seq"' "$ARG_CATALOG_FILE" >/dev/null; then
-        echo "Error: .entries in $ARG_CATALOG_FILE is not a valid array." >&2
-        exit 1
+    local file_type
+    file_type=$(detect_file_type "$ARG_CATALOG_FILE")
+
+    # Validate .relatedImages exists and extract images based on file type
+    local images_parsed=()
+
+    if [[ "$file_type" == "json" ]]; then
+        # For JSON/JSONL files, use jq
+        # jq can handle both regular JSON and JSONL (newline-delimited JSON) formats
+        # First, check if relatedImages exists in the file
+        if ! jq -e 'select(.relatedImages != null) | .relatedImages | type == "array"' "$ARG_CATALOG_FILE" >/dev/null 2>&1; then
+            echo "Error: .relatedImages in $ARG_CATALOG_FILE is not a valid array or not found." >&2
+            exit 1
+        fi
+
+        # Extract images from the JSON object(s) that contain relatedImages
+        while IFS= read -r line; do
+            if [[ -n "$line" ]] && [[ "$line" != "null" ]]; then
+                images_parsed+=("$line")
+            fi
+        done < <(jq -r 'select(.relatedImages != null) | .relatedImages[]?.image // empty' "$ARG_CATALOG_FILE" 2>/dev/null)
+    else
+        # For YAML files, use yq
+        if ! yq e '.relatedImages | type == "!!seq"' "$ARG_CATALOG_FILE" >/dev/null; then
+            echo "Error: .relatedImages in $ARG_CATALOG_FILE is not a valid array." >&2
+            exit 1
+        fi
+
+        while IFS= read -r line; do
+            [[ -n "$line" ]] && images_parsed+=("$line")
+        done < <(yq eval -r '.relatedImages | .[] | .image' "$ARG_CATALOG_FILE")
     fi
 
-    local images_parsed=()
-    while IFS= read -r line; do
-        images_parsed+=("$line")
-    done < <(yq eval -N '.relatedImages | .[] | .image' "$ARG_CATALOG_FILE")
     entries=${#images_parsed[@]}
+
+    if [[ $entries -eq 0 ]]; then
+        echo "Error: No related images found in $ARG_CATALOG_FILE" >&2
+        exit 1
+    fi
 
     declare -i i=0
     for ((; i<entries; i++)); do
@@ -93,20 +154,22 @@ validate_related_images() {
 
 
 main() {
-    check_preconditions
     parse_args "$@"
+    check_preconditions
     validate_related_images
 }
 
 usage() {
    cat << EOF
 NAME
-   $SCRIPT_NAME - check the relatedImages section on a catalog yaml file is suitable for production
+   $SCRIPT_NAME - check the relatedImages section on a catalog file (JSON or YAML) is suitable for production
 SYNOPSIS
    $SCRIPT_NAME --set-catalog-file FILE
 EXAMPLES
    - Check the catalog template 'catalog.yaml'
      $ $SCRIPT_NAME --set-catalog-file catalog.yaml
+   - Check the catalog JSON file 'catalog.json'
+     $ $SCRIPT_NAME --set-catalog-file catalog.json
 DESCRIPTION
 ARGS
    --set-catalog-file FILE
