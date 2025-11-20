@@ -12,7 +12,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)"
 
 # --- Configuration ---
-RHEL9_RELEASE="${RHEL9_RELEASE:-9.4}"
+RHEL9_RELEASE="${RHEL9_RELEASE:-latest}"
 
 # The image used to RUN the container, which needs subscription-manager and other tools.
 RHEL9_EXECUTION_IMAGE="${RHEL9_EXECUTION_IMAGE:-registry.access.redhat.com/ubi9/ubi:${RHEL9_RELEASE}}"
@@ -117,12 +117,27 @@ extract_repo_ids() {
 if [ "${USE_RHSM}" = "true" ]; then
     echo "STEP 2: Registering system..."
     subscription-manager register --org "${RHEL9_ORG_ID}" --activationkey "${RHEL9_ACTIVATION_KEY}" --force
-    subscription-manager release --set="${RHEL9_RELEASE}"
+    if [ "${RHEL9_RELEASE}" != "latest" ]; then
+        echo "Setting RHEL 9 release to ${RHEL9_RELEASE}"
+        subscription-manager release --set="${RHEL9_RELEASE}"
+    else
+        echo "Using latest RHEL 9 release"
+    fi
+
     subscription-manager refresh
 
+    # Disable all repositories and enable only what we need for skopeo and python3-pip
+    echo "Disabling all repositories..."
+    subscription-manager repos --disable="*" || echo "Could not disable all repositories"
+
+    echo "Enabling minimal repositories for skopeo and python3-pip..."
+    subscription-manager repos --enable="rhel-9-for-x86_64-baseos-rpms" || echo "Could not enable rhel-9-for-x86_64-baseos-rpms"
+    subscription-manager repos --enable="rhel-9-for-x86_64-appstream-rpms" || echo "Could not enable rhel-9-for-x86_64-appstream-rpms"
+
     echo "STEP 3: RHSM registration complete..."
-    # Note: Repository configuration will be handled by rpm-lockfile-prototype
+    # Note: Repository configuration for the lock file will be handled by rpm-lockfile-prototype
     # which reads repository definitions directly from rpms.in.yaml
+    # This is separate from the repository configuration for this runtime container.
     REPO_IDS=\$(extract_repo_ids)
 
     if [ -n "\$REPO_IDS" ]; then
