@@ -11,7 +11,7 @@ cat << EOF
 NAME
   $SCRIPT_NAME - bump the minor version across a project
 SYNOPSIS
-  $SCRIPT_NAME --current-version VERSION [--project-root DIR]
+  $SCRIPT_NAME --current-version VERSION [--project-root DIR] [--exclude LIST]
 EXAMPLES
   - Bump from 4.21.0 to 4.22.0 across the repo:
     $ $SCRIPT_NAME --current-version 4.21.0
@@ -28,6 +28,11 @@ ARGS
       Current version (e.g., 4.21.0 or 4.21). Patch is normalized to .0 when computing the new version.
   --project-root DIR
       Project root directory. Defaults to the current git repository root or current working directory if not a git repo.
+  --exclude LIST | --exclude PATH
+      Exclude files/dirs or extensions. Can be specified multiple times.
+      LIST may be a comma- or space-separated list mixing:
+        - Paths (relative to repo root or absolute), e.g.: 'docs/,README.md'
+        - Extensions in the form '.ext', e.g.: '.png,.gz'
   --help
       Display this help and exit.
 EOF
@@ -41,6 +46,8 @@ parse_args() {
 
   CURRENT_VERSION=""
   PROJECT_ROOT=""
+  EXCLUDES=()
+  EXCLUDE_EXTS=()
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -62,6 +69,31 @@ parse_args() {
           exit 1
         fi
         PROJECT_ROOT="$2"
+        shift 2
+        ;;
+      --exclude)
+        if [[ -z "${2:-}" ]]; then
+          echo "Error: --exclude requires a value" >&2
+          exit 1
+        fi
+        val="$2"
+        # Support comma or space separated values in a single flag
+        # Replace commas with spaces and iterate words
+        for _it in ${val//,/ }; do
+          # trim surrounding whitespace
+          _it="${_it#"${_it%%[![:space:]]*}"}"
+          _it="${_it%"${_it##*[![:space:]]}"}"
+          [[ -z "$_it" ]] && continue
+          if [[ "$_it" =~ ^\*\.(.+)$ ]]; then
+            EXCLUDE_EXTS+=("${BASH_REMATCH[1]}")
+          elif [[ "$_it" =~ ^\.(.+)$ ]]; then
+            EXCLUDE_EXTS+=("${BASH_REMATCH[1]}")
+          elif [[ "$_it" =~ ^ext:(.+)$ ]]; then
+            EXCLUDE_EXTS+=("${BASH_REMATCH[1]}")
+          else
+            EXCLUDES+=("$_it")
+          fi
+        done
         shift 2
         ;;
       *)
@@ -126,6 +158,52 @@ detect_sed_inplace_flag() {
   fi
 }
 
+normalize_excludes() {
+  ABS_EXCLUDES=()
+  for e in "${EXCLUDES[@]:-}"; do
+    local ex
+    if [[ "$e" = /* ]]; then
+      ex="$e"
+    else
+      ex="$PROJECT_ROOT/$e"
+    fi
+    ex="${ex%/}"
+    ABS_EXCLUDES+=("$ex")
+  done
+}
+
+is_excluded() {
+  local f="$1"
+  for ex in "${ABS_EXCLUDES[@]:-}"; do
+    if [[ "$f" == "$ex" ]] || [[ "$f" == "$ex/"* ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+matches_extension_policy() {
+  local f="$1"
+  local base ext
+  base="$(basename "$f")"
+  # Extract extension without dot (supports names with multiple dots: take last segment)
+  ext="${base##*.}"
+  if [[ "$base" == "$ext" ]]; then
+    ext=""  # no extension
+  fi
+
+  # If exclude list contains the ext, skip
+  if [[ ${#EXCLUDE_EXTS[@]:-0} -gt 0 ]]; then
+    for xe in "${EXCLUDE_EXTS[@]}"; do
+      if [[ "$ext" == "$xe" ]]; then
+        return 1
+      fi
+    done
+  fi
+
+  return 0
+}
+
 gather_files() {
   local root="$1"
   FILE_LIST=()
@@ -138,6 +216,12 @@ gather_files() {
       local fullpath="$root/$f"
       # Only add if it's a regular file (not a directory or symlink to directory)
       if [[ -f "$fullpath" ]]; then
+        if is_excluded "$fullpath"; then
+          continue
+        fi
+        if ! matches_extension_policy "$fullpath"; then
+          continue
+        fi
         FILE_LIST+=("$fullpath")
       fi
     fi
@@ -193,6 +277,7 @@ main() {
   parse_args "$@"
   normalize_and_compute_versions "$CURRENT_VERSION"
   detect_sed_inplace_flag
+  normalize_excludes
   gather_files "$PROJECT_ROOT"
   perform_replacements
   echo "Version bump completed."

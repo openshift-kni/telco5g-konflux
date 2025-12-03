@@ -7,6 +7,11 @@ SCRIPT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 # Project root (defaults to repository root)
 PROJECT_ROOT ?= $(shell git rev-parse --show-toplevel 2>/dev/null || realpath $(SCRIPT_DIR)/../..)
 
+# Single exclude list: comma or space-separated entries (paths or extensions)
+# Mix paths (relative/absolute) and extensions (use .ext, e.g., .gz)
+EXCLUDE ?=
+EXCLUDE_ARG := $(if $(strip $(EXCLUDE)),--exclude $(EXCLUDE),)
+
 # Example:
 #   make bump-minor CURRENT_VERSION=4.21.0
 .PHONY: bump-minor
@@ -16,7 +21,7 @@ bump-minor: ## Bump minor version across the project (use CURRENT_VERSION=4.21.0
 		exit 1; \
 	fi
 	@echo "Bumping minor version from $(CURRENT_VERSION) in $(PROJECT_ROOT)"
-	$(SCRIPT_DIR)/konflux-bump-minor.sh --current-version "$(CURRENT_VERSION)" --project-root "$(PROJECT_ROOT)"
+	$(SCRIPT_DIR)/konflux-bump-minor.sh --current-version "$(CURRENT_VERSION)" --project-root "$(PROJECT_ROOT)" $(EXCLUDE_ARG)
 
 .PHONY: help
 help: ## Display available targets
@@ -28,10 +33,13 @@ help: ## Display available targets
 	@echo "Variables:"
 	@echo "  CURRENT_VERSION   Current version to bump from (e.g., 4.21.0)"
 	@echo "  PROJECT_ROOT      Project root directory (default: repo root)"
+	@echo "  EXCLUDE           Comma/space-separated: paths or extensions (use .ext, e.g., .gz)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make bump-minor CURRENT_VERSION=4.21.0"
 	@echo "  make bump-minor CURRENT_VERSION=4.21.0 PROJECT_ROOT=/path/to/project"
+	@echo "  make bump-minor CURRENT_VERSION=4.21.0 EXCLUDE=\"docs/,README.md,.png,.gz\""
+	@echo "  make bump-minor CURRENT_VERSION=4.21.0 EXCLUDE=\"docs/ README.md .png .gz\""
 	@echo ""
 	@echo "Available targets:"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(SCRIPT_DIR)/Makefile
