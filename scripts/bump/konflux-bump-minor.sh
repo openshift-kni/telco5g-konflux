@@ -130,19 +130,18 @@ gather_files() {
   local root="$1"
   FILE_LIST=()
 
-  if git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    # Only tracked files
-    while IFS= read -r -d '' f; do
-      FILE_LIST+=("$f")
-    done < <(git -C "$root" ls-files -z)
-  else
-    # Fallback to find; exclude common dirs
-    while IFS= read -r -d '' f; do
-      FILE_LIST+=("$f")
-    done < <(find "$root" \
-      -type d \( -name .git -o -name .svn -o -name .hg -o -name node_modules -o -name vendor -o -name .tox -o -name .venv -o -name .mypy_cache -o -name .pytest_cache -o -name dist -o -name build \) -prune -false -o \
-      -type f -print0)
-  fi
+  # Only tracked files, excluding vendor and other common directories
+  while IFS= read -r -d '' f; do
+    # Skip files in vendor/, node_modules/, telco5g-konflux/, etc.
+    if [[ ! "$f" =~ ^(vendor|node_modules|telco5g-konflux|\.git|\.tox|\.venv|\.mypy_cache|\.pytest_cache|dist|build)/ ]]; then
+      # Convert relative path to absolute by prepending root
+      local fullpath="$root/$f"
+      # Only add if it's a regular file (not a directory or symlink to directory)
+      if [[ -f "$fullpath" ]]; then
+        FILE_LIST+=("$fullpath")
+      fi
+    fi
+  done < <(git -C "$root" ls-files -z)
 }
 
 perform_replacements() {
@@ -158,7 +157,7 @@ perform_replacements() {
     fi
 
     # Quick pre-check to avoid invoking sed unnecessarily
-    if ! grep -Eq --binary-files=without-match "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH//-/\\-})" "$file"; then
+    if ! grep -Eq --binary-files=without-match "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH})" "$file"; then
       continue
     fi
 
@@ -179,8 +178,8 @@ perform_replacements() {
       changed_files+=1
       # Count simple occurrence deltas (best-effort)
       local before after
-      before=$(grep -Eo "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH//-/\\-})" "$tmp" | wc -l || true)
-      after=$(grep -Eo "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH//-/\\-})" "$file" | wc -l || true)
+      before=$(grep -Eo "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH})" "$tmp" | wc -l || true)
+      after=$(grep -Eo "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH})" "$file" | wc -l || true)
       if [[ "$before" -gt "$after" ]]; then
         total_replacements+=$((before - after))
       fi
@@ -188,23 +187,12 @@ perform_replacements() {
     rm -f "$tmp"
   done
 
-  echo "Files changed: $changed_files"
-  echo "Estimated occurrences replaced: $total_replacements"
 }
 
 main() {
   parse_args "$@"
   normalize_and_compute_versions "$CURRENT_VERSION"
   detect_sed_inplace_flag
-  echo "Project root: $PROJECT_ROOT"
-  echo "Current versions to replace:"
-  echo "  DOT:  $OLD_DOT"
-  echo "  FULL: $OLD_FULL"
-  echo "  DASH: $OLD_DASH"
-  echo "New versions:"
-  echo "  DOT:  $NEW_DOT"
-  echo "  FULL: $NEW_FULL"
-  echo "  DASH: $NEW_DASH"
   gather_files "$PROJECT_ROOT"
   perform_replacements
   echo "Version bump completed."
