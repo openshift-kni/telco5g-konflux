@@ -160,21 +160,30 @@ detect_sed_inplace_flag() {
 
 normalize_excludes() {
   ABS_EXCLUDES=()
-  for e in "${EXCLUDES[@]:-}"; do
-    local ex
-    if [[ "$e" = /* ]]; then
-      ex="$e"
-    else
-      ex="$PROJECT_ROOT/$e"
-    fi
-    ex="${ex%/}"
-    ABS_EXCLUDES+=("$ex")
-  done
+  # Only process if EXCLUDES has elements
+  if [[ ${#EXCLUDES[@]} -gt 0 ]]; then
+    for e in "${EXCLUDES[@]}"; do
+      # Skip empty entries
+      [[ -z "$e" ]] && continue
+      local ex
+      if [[ "$e" = /* ]]; then
+        ex="$e"
+      else
+        ex="$PROJECT_ROOT/$e"
+      fi
+      ex="${ex%/}"
+      ABS_EXCLUDES+=("$ex")
+    done
+  fi
 }
 
 is_excluded() {
   local f="$1"
-  for ex in "${ABS_EXCLUDES[@]:-}"; do
+  # If no excludes, nothing is excluded
+  if [[ ${#ABS_EXCLUDES[@]} -eq 0 ]]; then
+    return 1
+  fi
+  for ex in "${ABS_EXCLUDES[@]}"; do
     if [[ "$f" == "$ex" ]] || [[ "$f" == "$ex/"* ]]; then
       return 0
     fi
@@ -193,7 +202,7 @@ matches_extension_policy() {
   fi
 
   # If exclude list contains the ext, skip
-  if [[ ${#EXCLUDE_EXTS[@]:-0} -gt 0 ]]; then
+  if [[ ${#EXCLUDE_EXTS[@]} -gt 0 ]]; then
     for xe in "${EXCLUDE_EXTS[@]}"; do
       if [[ "$ext" == "$xe" ]]; then
         return 1
