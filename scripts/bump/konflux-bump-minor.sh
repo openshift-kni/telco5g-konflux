@@ -149,12 +149,16 @@ normalize_and_compute_versions() {
   NEW_DASH="${MAJOR}-${NEW_MINOR}"
 }
 
-detect_sed_inplace_flag() {
-  # Linux vs macOS sed -i
+detect_os_and_set_flags() {
+  # Detect OS and set appropriate flags for commands
   if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS
     SED_INPLACE=(-i '')
+    IS_MACOS=true
   else
+    # Linux
     SED_INPLACE=(-i)
+    IS_MACOS=false
   fi
 }
 
@@ -250,7 +254,8 @@ perform_replacements() {
     fi
 
     # Quick pre-check to avoid invoking sed unnecessarily
-    if ! grep -Eq --binary-files=without-match "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH})" "$file"; then
+    # Use -I to ignore binary files (compatible with both GNU and BSD grep)
+    if ! grep -EIq "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH})" "$file"; then
       continue
     fi
 
@@ -270,9 +275,10 @@ perform_replacements() {
     if ! cmp -s "$tmp" "$file"; then
       changed_files+=1
       # Count simple occurrence deltas (best-effort)
+      # Use xargs to trim whitespace from wc output (macOS adds leading spaces)
       local before after
-      before=$(grep -Eo "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH})" "$tmp" | wc -l || true)
-      after=$(grep -Eo "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH})" "$file" | wc -l || true)
+      before=$(grep -Eo "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH})" "$tmp" | wc -l | xargs || true)
+      after=$(grep -Eo "(${OLD_FULL//./\\.}|${OLD_DOT//./\\.}|${OLD_DASH})" "$file" | wc -l | xargs || true)
       if [[ "$before" -gt "$after" ]]; then
         total_replacements+=$((before - after))
       fi
@@ -285,7 +291,7 @@ perform_replacements() {
 main() {
   parse_args "$@"
   normalize_and_compute_versions "$CURRENT_VERSION"
-  detect_sed_inplace_flag
+  detect_os_and_set_flags
   normalize_excludes
   gather_files "$PROJECT_ROOT"
   perform_replacements
