@@ -23,6 +23,10 @@ DESCRIPTION
     - MAJOR.MINOR.0 -> (MINOR+1) as MAJOR.MINOR_NEW.0
     - MAJOR.MINOR   -> (MINOR+1) as MAJOR.MINOR_NEW
     - MAJOR-MINOR   -> (MINOR+1) as MAJOR-MINOR_NEW
+  
+  Additionally, it renames Tekton pipeline files in .tekton/ directory:
+    - file-MAJOR-MINOR-suffix.yaml -> file-MAJOR-MINOR_NEW-suffix.yaml
+    - Example: o-cloud-manager-4-21-push.yaml -> o-cloud-manager-4-22-push.yaml
 ARGS
   --current-version VERSION
       Current version (e.g., 4.21.0 or 4.21). Patch is normalized to .0 when computing the new version.
@@ -288,6 +292,53 @@ perform_replacements() {
 
 }
 
+rename_tekton_pipelines() {
+  local tekton_dir="$PROJECT_ROOT/.tekton"
+  
+  # Check if .tekton directory exists
+  if [[ ! -d "$tekton_dir" ]]; then
+    echo "Note: No .tekton directory found, skipping pipeline renaming"
+    return 0
+  fi
+
+  local -i renamed_files=0
+  
+  # Find files matching pattern: *-MAJOR-MINOR-*.yaml
+  # e.g., o-cloud-manager-4-22-pull-request.yaml -> o-cloud-manager-4-23-pull-request.yaml
+  while IFS= read -r -d '' file; do
+    local filename basename_only dirname_part
+    filename="$(basename "$file")"
+    dirname_part="$(dirname "$file")"
+    
+    # Check if filename contains the old version pattern (with dashes)
+    if [[ "$filename" =~ -${MAJOR}-${MINOR}- ]]; then
+      # Replace old version with new version in filename
+      local new_filename
+      new_filename="${filename//-${MAJOR}-${MINOR}-/-${MAJOR}-${NEW_MINOR}-}"
+      
+      if [[ "$filename" != "$new_filename" ]]; then
+        local old_path="$dirname_part/$filename"
+        local new_path="$dirname_part/$new_filename"
+        
+        if [[ -e "$new_path" ]]; then
+          echo "Warning: Target file already exists: $new_path"
+          echo "  Skipping rename of: $old_path"
+        else
+          echo "Renaming: $filename -> $new_filename"
+          mv "$old_path" "$new_path"
+          renamed_files+=1
+        fi
+      fi
+    fi
+  done < <(find "$tekton_dir" -maxdepth 1 -type f -name "*.yaml" -print0)
+  
+  if [[ $renamed_files -gt 0 ]]; then
+    echo "Renamed $renamed_files Tekton pipeline file(s)"
+  else
+    echo "No Tekton pipeline files needed renaming"
+  fi
+}
+
 main() {
   parse_args "$@"
   normalize_and_compute_versions "$CURRENT_VERSION"
@@ -295,6 +346,7 @@ main() {
   normalize_excludes
   gather_files "$PROJECT_ROOT"
   perform_replacements
+  rename_tekton_pipelines
   echo "Version bump completed."
 }
 
