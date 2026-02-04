@@ -214,6 +214,38 @@ git branch -D branch-cut-to-4.22
 make branch-cut-with-git CURRENT_VERSION=4.21.0
 ```
 
+## Important: Tekton Pipeline Configuration
+
+### For Dependent Repositories
+
+If your repository uses this branch cut automation and has Tekton pipelines, you **should** add a filter to prevent pipelines from running on branch cut commits.
+
+### Why This Is Necessary
+
+Branch cut commits are tagged with `[BRANCH-CUT]` in their title and should not trigger CI/CD pipelines because:
+
+1. They modify pipeline definition files themselves
+2. They change version numbers across the entire codebase
+3. They are intended for manual PR review, not automated validation
+4. Running pipelines during branch cut causes unnecessary failures
+
+### Required Filter
+
+Add this CEL expression to your Tekton pipeline interceptors in `.tekton/*.yaml` files:
+
+```yaml
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  annotations:
+    pipelinesascode.tekton.dev/on-cel-expression: |
+      event == "pull_request/push" &&
+      target_branch == "main" &&
+                !event_title.startsWith("[BRANCH-CUT]") &&
+```
+
+This ensures that any PR or commit with a title starting with `[BRANCH-CUT]` will not trigger the pipeline, while all other workflows remain unchanged.
+
 ## Help
 
 To see all available options:
