@@ -9,24 +9,25 @@ SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}")
 print_usage() {
 cat << EOF
 NAME
-  $SCRIPT_NAME - bump the minor version across a project
+  $SCRIPT_NAME - perform branch cut operations for a new release
 SYNOPSIS
   $SCRIPT_NAME --current-version VERSION [--project-root DIR] [--exclude LIST]
 EXAMPLES
-  - Bump from 4.21.0 to 4.22.0 across the repo:
+  - Perform full branch cut from 4.21.0:
     $ $SCRIPT_NAME --current-version 4.21.0
-  - Bump for a specific directory:
-    $ $SCRIPT_NAME --current-version 4.21.0 --project-root /path/to/project
 DESCRIPTION
-  This script increments the minor version of a semantic-like version and replaces occurrences across the project.
-  It updates these forms:
-    - MAJOR.MINOR.0 -> (MINOR+1) as MAJOR.MINOR_NEW.0
-    - MAJOR.MINOR   -> (MINOR+1) as MAJOR.MINOR_NEW
-    - MAJOR-MINOR   -> (MINOR+1) as MAJOR-MINOR_NEW
+  This script performs the complete branch cut workflow:
   
-  Additionally, it renames Tekton pipeline files in .tekton/ directory:
-    - file-MAJOR-MINOR-suffix.yaml -> file-MAJOR-MINOR_NEW-suffix.yaml
-    - Example: o-cloud-manager-4-21-push.yaml -> o-cloud-manager-4-22-push.yaml
+  1. On main branch - Version bump:
+     - Increments the minor version: MAJOR.MINOR -> MAJOR.(MINOR+1)
+     - Updates all version references in the project
+     - Renames Tekton pipeline files in .tekton/ directory
+  
+  2. On release-X.Y branch - Prepare release:
+     - Checks out the release branch (release-MAJOR.MINOR)
+     - Replaces 'main' with 'release-X.Y' in YAML files
+  
+  The script automatically switches between branches and performs both operations.
 ARGS
   --current-version VERSION
       Current version (e.g., 4.21.0 or 4.21). Patch is normalized to .0 when computing the new version.
@@ -151,6 +152,9 @@ normalize_and_compute_versions() {
   NEW_DOT="${MAJOR}.${NEW_MINOR}"
   NEW_FULL="${MAJOR}.${NEW_MINOR}.0"
   NEW_DASH="${MAJOR}-${NEW_MINOR}"
+
+  # Compute release branch name (release-X.Y)
+  RELEASE_BRANCH="release-${MAJOR}.${MINOR}"
 }
 
 detect_os_and_set_flags() {
@@ -339,15 +343,106 @@ rename_tekton_pipelines() {
   fi
 }
 
+replace_main_with_release_branch() {
+  local release_branch="$1"
+  local tekton_dir="$PROJECT_ROOT/.tekton"
+  
+  echo "==> Replacing 'main' with '$release_branch' in YAML files..."
+  
+  local -i changed_files=0
+  
+  # Process .tekton directory YAML files
+  if [[ -d "$tekton_dir" ]]; then
+    while IFS= read -r -d '' file; do
+      # Check if file contains 'main' that should be replaced
+      # We target specific patterns to avoid replacing unintended occurrences
+      if grep -Eq "(target_branch == \"main\"|target_branch == 'main'|target_branch: main|branch: main)" "$file"; then
+        echo "Updating: $(basename "$file")"
+        
+        # Replace target_branch references
+        sed -E "${SED_INPLACE[@]}" "s/(target_branch == )\"main\"/\1\"${release_branch}\"/g" "$file"
+        sed -E "${SED_INPLACE[@]}" "s/(target_branch == )'main'/\1'${release_branch}'/g" "$file"
+        sed -E "${SED_INPLACE[@]}" "s/(target_branch: )main$/\1${release_branch}/g" "$file"
+        sed -E "${SED_INPLACE[@]}" "s/(branch: )main$/\1${release_branch}/g" "$file"
+        
+        changed_files+=1
+      fi
+    done < <(find "$tekton_dir" -type f -name "*.yaml" -print0)
+  fi
+  
+  if [[ $changed_files -gt 0 ]]; then
+    echo "Updated $changed_files YAML file(s) with release branch name"
+  else
+    echo "No YAML files needed branch name updates"
+  fi
+}
+
 main() {
   parse_args "$@"
   normalize_and_compute_versions "$CURRENT_VERSION"
   detect_os_and_set_flags
+  
+  # Pre-check: Verify release branch exists before doing anything
+  echo "==> Verifying release branch '$RELEASE_BRANCH' exists..."
+  if ! git -C "$PROJECT_ROOT" show-ref --verify --quiet "refs/heads/$RELEASE_BRANCH" 2>/dev/null && \
+     ! git -C "$PROJECT_ROOT" show-ref --verify --quiet "refs/remotes/origin/$RELEASE_BRANCH" 2>/dev/null; then
+    echo "Error: Release branch '$RELEASE_BRANCH' does not exist locally or remotely." >&2
+    echo "       Cannot continue without the release branch." >&2
+    echo "       Please ensure the release branch is created before running branch-cut." >&2
+    exit 1
+  fi
+  echo "    Release branch '$RELEASE_BRANCH' found."
+  
+  # Step 1: On main branch - bump version and rename pipelines
+  echo ""
+  echo "=========================================="
+  echo "Step 1: Version bump on main branch"
+  echo "=========================================="
   normalize_excludes
   gather_files "$PROJECT_ROOT"
   perform_replacements
   rename_tekton_pipelines
-  echo "Version bump completed."
+  echo "Version bump completed: ${OLD_DOT} -> ${NEW_DOT}"
+  
+  # Step 2: Checkout to release branch and prepare it
+  echo ""
+  echo "=========================================="
+  echo "Step 2: Prepare release branch ($RELEASE_BRANCH)"
+  echo "=========================================="
+  
+  # Create a new branch from release branch (cannot modify release directly)
+  local PREPARE_BRANCH="prepare-${RELEASE_BRANCH}"
+  
+  echo "==> Fetching latest from remote..."
+  git -C "$PROJECT_ROOT" fetch origin "$RELEASE_BRANCH" 2>/dev/null || true
+  
+  echo "==> Creating branch '$PREPARE_BRANCH' from '$RELEASE_BRANCH'..."
+  
+  # Check if prepare branch already exists
+  if git -C "$PROJECT_ROOT" show-ref --verify --quiet "refs/heads/$PREPARE_BRANCH" 2>/dev/null; then
+    echo "Warning: Branch '$PREPARE_BRANCH' already exists locally. Checking it out..."
+    git -C "$PROJECT_ROOT" checkout "$PREPARE_BRANCH"
+  else
+    # Create new branch from release branch (prefer remote if available)
+    if git -C "$PROJECT_ROOT" show-ref --verify --quiet "refs/remotes/origin/$RELEASE_BRANCH" 2>/dev/null; then
+      git -C "$PROJECT_ROOT" checkout -b "$PREPARE_BRANCH" "origin/$RELEASE_BRANCH"
+    else
+      git -C "$PROJECT_ROOT" checkout -b "$PREPARE_BRANCH" "$RELEASE_BRANCH"
+    fi
+  fi
+  
+  echo "==> Replacing 'main' with '$RELEASE_BRANCH' in YAML files..."
+  replace_main_with_release_branch "$RELEASE_BRANCH"
+  echo "Release branch preparation completed on '$PREPARE_BRANCH'."
+  
+  echo ""
+  echo "=========================================="
+  echo "Branch cut completed!"
+  echo "=========================================="
+  echo ""
+  echo "Next steps:"
+  echo "  1. Review changes and push the branches"
+  echo "  2. Create PRs for both branches"
 }
 
 main "$@"
