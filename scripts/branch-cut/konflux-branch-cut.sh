@@ -27,13 +27,17 @@ ARGS
         Current version (e.g., 4.21.0 or 4.21). Patch is normalized to .0 when computing the new version.
     --project-root DIR
         Project root directory. Defaults to the current git repository root or current working directory if not a git repo.
-    --exclude LIST | --exclude PATH
-        Exclude files/dirs or extensions. Can be specified multiple times.
-        LIST may be a comma- or space-separated list mixing:
-            - Paths (relative to repo root or absolute), e.g.: 'docs/,README.md'
-            - Extensions in the form '.ext', e.g.: '.png,.gz'
-    --help
-        Display this help and exit.
+  --exclude LIST | --exclude PATH
+      Exclude files/dirs or extensions. Can be specified multiple times.
+      LIST may be a comma- or space-separated list mixing:
+        - Paths (relative to repo root or absolute), e.g.: 'docs/,README.md'
+        - Extensions in the form '.ext', e.g.: '.png,.gz'
+  --exclude-vars VARS
+      Exclude lines containing specific variables from version replacement.
+      VARS is a comma- or space-separated list of variable names.
+      Example: 'RUNTIME_IMAGE,OPM_IMAGE' will skip lines with these variables.
+  --help
+      Display this help and exit.
 EOF
 }
 parse_args() {
@@ -45,6 +49,7 @@ parse_args() {
     PROJECT_ROOT=""
     EXCLUDES=()
     EXCLUDE_EXTS=()
+    EXCLUDE_VARS=()
     while [[ $# -gt 0 ]]; do
             case "$1" in
         --help|-h)
@@ -89,6 +94,22 @@ parse_args() {
                 else
                     EXCLUDES+=("$_it")
                 fi
+            done
+            shift 2
+            ;;
+        --exclude-vars)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --exclude-vars requires a value" >&2
+                exit 1
+            fi
+            val="$2"
+            # Support comma or space separated values
+            for _it in ${val//,/ }; do
+                # trim surrounding whitespace
+                _it="${_it#"${_it%%[![:space:]]*}"}"
+                _it="${_it%"${_it##*[![:space:]]}"}"
+                [[ -z "$_it" ]] && continue
+                EXCLUDE_VARS+=("$_it")
             done
             shift 2
             ;;
@@ -224,6 +245,14 @@ gather_files() {
 perform_replacements() {
     local -i changed_files=0
     local -i total_replacements=0
+
+    # Build exclusion pattern for grep if EXCLUDE_VARS is set
+    local exclude_pattern=""
+    if [[ ${#EXCLUDE_VARS[@]} -gt 0 ]]; then
+        exclude_pattern=$(printf "|%s=" "${EXCLUDE_VARS[@]}")
+        exclude_pattern="${exclude_pattern:1}"  # Remove leading |
+    fi
+
     for file in "${FILE_LIST[@]}"; do
             # Skip binary files quickly
             if grep -Iq . "$file"; then
@@ -240,13 +269,40 @@ perform_replacements() {
             local tmp
             tmp="$(mktemp)"
             cp "$file" "$tmp"
-            # Order matters to avoid partial overlaps:
-            # 1) full form X.Y.0
-            sed -E "${SED_INPLACE[@]}" "s/(^|[^0-9])${MAJOR}\.${MINOR}\.0([^0-9]|$)/\1${NEW_FULL}\2/g" "$file"
-            # 2) dashed X-Y
-            sed -E "${SED_INPLACE[@]}" "s/(^|[^0-9])${MAJOR}-${MINOR}([^0-9]|$)/\1${NEW_DASH}\2/g" "$file"
-            # 3) dot short X.Y (ensure we didn't already match .0 in step 1)
-            sed -E "${SED_INPLACE[@]}" "s/(^|[^0-9])${MAJOR}\.${MINOR}([^0-9]|$)/\1${NEW_DOT}\2/g" "$file"
+
+            # If we have excluded variables, process line by line
+            if [[ -n "$exclude_pattern" ]]; then
+        local output_file
+        output_file="$(mktemp)"
+        while IFS= read -r line; do
+            # Check if line contains any excluded variable
+            if echo "$line" | grep -Eq "$exclude_pattern"; then
+                # Line contains excluded variable, keep it unchanged
+                echo "$line" >> "$output_file"
+            else
+                # Apply replacements to this line
+                # Order matters to avoid partial overlaps:
+                # 1) full form X.Y.0
+                line=$(echo "$line" | sed -E "s/(^|[^0-9])${MAJOR}\.${MINOR}\.0([^0-9]|$)/\1${NEW_FULL}\2/g")
+                # 2) dashed X-Y
+                line=$(echo "$line" | sed -E "s/(^|[^0-9])${MAJOR}-${MINOR}([^0-9]|$)/\1${NEW_DASH}\2/g")
+                # 3) dot short X.Y
+                line=$(echo "$line" | sed -E "s/(^|[^0-9])${MAJOR}\.${MINOR}([^0-9]|$)/\1${NEW_DOT}\2/g")
+                echo "$line" >> "$output_file"
+            fi
+        done < "$file"
+        mv "$output_file" "$file"
+            else
+        # No excluded variables, use faster sed approach
+        # Order matters to avoid partial overlaps:
+        # 1) full form X.Y.0
+        sed -E "${SED_INPLACE[@]}" "s/(^|[^0-9])${MAJOR}\.${MINOR}\.0([^0-9]|$)/\1${NEW_FULL}\2/g" "$file"
+        # 2) dashed X-Y
+        sed -E "${SED_INPLACE[@]}" "s/(^|[^0-9])${MAJOR}-${MINOR}([^0-9]|$)/\1${NEW_DASH}\2/g" "$file"
+        # 3) dot short X.Y (ensure we didn't already match .0 in step 1)
+        sed -E "${SED_INPLACE[@]}" "s/(^|[^0-9])${MAJOR}\.${MINOR}([^0-9]|$)/\1${NEW_DOT}\2/g" "$file"
+            fi
+
             if ! cmp -s "$tmp" "$file"; then
         changed_files+=1
         # Count simple occurrence deltas (best-effort)
@@ -260,6 +316,7 @@ perform_replacements() {
             fi
             rm -f "$tmp"
     done
+    echo "Summary: changed $changed_files file(s), $total_replacements replacement(s)"
 }
 rename_tekton_pipelines() {
     local tekton_dir="$PROJECT_ROOT/.tekton"

@@ -12,6 +12,11 @@ PROJECT_ROOT ?= $(shell git rev-parse --show-toplevel 2>/dev/null || realpath $(
 EXCLUDE ?=
 EXCLUDE_ARG := $(if $(strip $(EXCLUDE)),--exclude $(EXCLUDE),)
 
+# Exclude variables: comma or space-separated variable names to skip during version replacement
+# Example: RUNTIME_IMAGE,OPM_IMAGE
+EXCLUDE_VARS ?=
+EXCLUDE_VARS_ARG := $(if $(strip $(EXCLUDE_VARS)),--exclude-vars $(EXCLUDE_VARS),)
+
 # Check for uncommitted changes before switching branches (default: true)
 CHECK_UNCOMMITTED ?= true
 
@@ -38,7 +43,7 @@ branch-cut: ## Perform full branch cut (bump on main + prepare release branch)
 	@echo "Branch cut: $(CURRENT_VERSION) -> $(NEW_VERSION)"
 	@echo "Release branch: $(RELEASE_BRANCH)"
 	@echo ""
-	$(SCRIPT_DIR)/konflux-branch-cut.sh --current-version "$(CURRENT_VERSION)" --project-root "$(PROJECT_ROOT)" $(EXCLUDE_ARG)
+	$(SCRIPT_DIR)/konflux-branch-cut.sh --current-version "$(CURRENT_VERSION)" --project-root "$(PROJECT_ROOT)" $(EXCLUDE_ARG) $(EXCLUDE_VARS_ARG)
 
 # Example:
 #   make branch-cut-with-git CURRENT_VERSION=4.21.0
@@ -72,7 +77,7 @@ branch-cut-with-git: ## Perform full branch cut with git workflow (fetch, branch
 	@git -C "$(PROJECT_ROOT)" checkout -b "$(BRANCH_NAME)"
 	@echo ""
 	@echo "==> Performing branch cut..."
-	$(SCRIPT_DIR)/konflux-branch-cut.sh --current-version "$(CURRENT_VERSION)" --project-root "$(PROJECT_ROOT)" $(EXCLUDE_ARG)
+	$(SCRIPT_DIR)/konflux-branch-cut.sh --current-version "$(CURRENT_VERSION)" --project-root "$(PROJECT_ROOT)" $(EXCLUDE_ARG) $(EXCLUDE_VARS_ARG)
 	@echo ""
 	@echo "==> Staging and committing changes on current branch..."
 	@git -C "$(PROJECT_ROOT)" add -A
@@ -110,12 +115,14 @@ help: ## Display available targets
 	@echo "  CURRENT_VERSION     Current version to branch cut from (e.g., 4.21.0)"
 	@echo "  PROJECT_ROOT        Project root directory (default: repo root)"
 	@echo "  EXCLUDE             Comma/space-separated: paths or extensions (use .ext, e.g., .gz)"
+	@echo "  EXCLUDE_VARS        Comma/space-separated: variable names to skip in replacements (e.g., RUNTIME_IMAGE,OPM_IMAGE)"
 	@echo "  CHECK_UNCOMMITTED   Check for uncommitted changes before branching (default: true)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make branch-cut CURRENT_VERSION=4.21.0"
 	@echo "  make branch-cut-with-git CURRENT_VERSION=4.21.0"
 	@echo "  make branch-cut CURRENT_VERSION=4.21.0 EXCLUDE=\"docs/,.png\""
+	@echo "  make branch-cut CURRENT_VERSION=4.21.0 EXCLUDE_VARS=\"RUNTIME_IMAGE,OPM_IMAGE\""
 	@echo ""
 	@echo "Available targets:"
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-25s %s\n", $$1, $$2}' $(SCRIPT_DIR)/Makefile

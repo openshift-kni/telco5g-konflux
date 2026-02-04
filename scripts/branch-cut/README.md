@@ -81,13 +81,44 @@ git diff
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `CURRENT_VERSION` | **Required**. Current version | `4.21.0` |
-| `EXCLUDE` | Exclude files/directories | `"docs/,.png,.gz"` |
+| `EXCLUDE` | Exclude files/directories/extensions | `"docs/,.png,.gz"` |
+| `EXCLUDE_VARS` | Exclude variable assignments from version replacement | `"RUNTIME_IMAGE,OPM_IMAGE"` |
 | `CHECK_UNCOMMITTED` | Check for uncommitted changes | `false` |
+
+**Note about EXCLUDE_VARS**: When you specify variables with `EXCLUDE_VARS`, any line containing these variable assignments (e.g., `RUNTIME_IMAGE=`) will be skipped during version replacement. This is useful when you want to prevent version numbers in specific variables from being updated (e.g., when they reference external images that should maintain their own versioning).
+
+For example, if a file contains:
+```
+VERSION=4.21.0
+RUNTIME_IMAGE=registry.io/base:4.21
+OPM_IMAGE=registry.io/opm:4.21
+```
+
+And you run:
+```bash
+make branch-cut CURRENT_VERSION=4.21.0 EXCLUDE_VARS="RUNTIME_IMAGE,OPM_IMAGE"
+```
+
+The result will be:
+```
+VERSION=4.22.0
+RUNTIME_IMAGE=registry.io/base:4.21   # <- Not changed
+OPM_IMAGE=registry.io/opm:4.21         # <- Not changed
+```
 
 ### Example with exclusions
 
 ```bash
+# Exclude specific files and directories
 make branch-cut-with-git CURRENT_VERSION=4.21.0 EXCLUDE="docs/,README.md,.png"
+
+# Exclude specific variables from version replacement
+make branch-cut-with-git CURRENT_VERSION=4.21.0 EXCLUDE_VARS="RUNTIME_IMAGE,OPM_IMAGE"
+
+# Combine both types of exclusions
+make branch-cut-with-git CURRENT_VERSION=4.21.0 \
+  EXCLUDE="docs/,.png" \
+  EXCLUDE_VARS="RUNTIME_IMAGE,OPM_IMAGE"
 ```
 
 ## Complete workflow example
