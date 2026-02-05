@@ -241,10 +241,10 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: |
       event == "pull_request/push" &&
       target_branch == "main" &&
-                !event_title.startsWith("[BRANCH-CUT]") &&
+                !event_title.contains("[BRANCH-CUT]") &&
 ```
 
-This ensures that any PR or commit with a title starting with `[BRANCH-CUT]` will not trigger the pipeline, while all other workflows remain unchanged.
+This ensures that any PR or commit with a title that contains `[BRANCH-CUT]` will not trigger the pipeline, while all other workflows remain unchanged.
 
 ## Help
 
