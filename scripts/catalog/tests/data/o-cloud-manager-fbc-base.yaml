@@ -1,0 +1,9 @@
+---
+entries:
+  - defaultChannel: ${default_channel}
+    icon:
+      base64data: PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIg
+      mediatype: image/svg+xml
+    name: o-cloud-manager
+    schema: olm.package
+schema: olm.template.basic

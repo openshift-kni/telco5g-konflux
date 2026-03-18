@@ -1,6 +1,73 @@
-# Catalog Comparison Script
+# Catalog Scripts
 
-This directory contains the `konflux-compare-catalog.sh` script for comparing generated catalogs with upstream FBC (File-Based Catalog) images.
+This directory contains scripts and make targets for:
+
+- building a catalog from a resources template,
+- updating catalog templates from bundle-build metadata,
+- validating generated catalogs, and
+- comparing generated catalogs against upstream FBC (File-Based Catalog) images.
+
+## Build Catalog From Resources Template
+
+Use `konflux-build-catalog-from-resources-template.sh` to generate a final catalog YAML from a template with a `.resources` list.
+The script also supports replacing `${default_channel}` placeholders via `--set-default-channel`.
+
+### Input Template Format
+
+```yaml
+---
+resources:
+  - "o-cloud-manager-fbc-base.yaml"
+  - "o-cloud-manager-channel-0-1.yaml"
+  - "o-cloud-manager-channel-0-2.yaml"
+  - "o-cloud-manager-deprecated-channels-4-20.yaml"
+```
+
+The repository test data for this flow are stored under `scripts/catalog/tests/data/`.
+
+Each referenced resource must be either:
+
+- a YAML document with an `.entries` array, or
+- a YAML sequence (list) that is itself a list of entries.
+
+### Direct Script Usage
+
+```bash
+# Build catalog from resources template
+./konflux-build-catalog-from-resources-template.sh \
+  --set-template-input-file tests/data/openshift-4-20-template.in.yaml \
+  --set-template-output-file openshift-4-20.yaml
+
+# Build catalog and replace ${default_channel}
+./konflux-build-catalog-from-resources-template.sh \
+  --set-template-input-file tests/data/openshift-4-20-template.in.yaml \
+  --set-template-output-file openshift-4-20.yaml \
+  --set-default-channel pre-ga-0.2
+
+# Validate generated file with opm (opm validate expects a directory)
+tmpdir=$(mktemp -d)
+cp openshift-4-20.yaml "$tmpdir/catalog.yaml"
+opm validate "$tmpdir"
+rm -rf "$tmpdir"
+```
+
+### Make Target Usage
+
+```bash
+# Build
+make build-catalog-from-resources-template \
+  RESOURCES_TEMPLATE_FILE_INPUT=tests/data/openshift-4-20-template.in.yaml \
+  RESOURCES_TEMPLATE_FILE_OUTPUT=openshift-4-20.yaml
+
+# Build and replace ${default_channel}
+make build-catalog-from-resources-template \
+  RESOURCES_TEMPLATE_FILE_INPUT=tests/data/openshift-4-20-template.in.yaml \
+  RESOURCES_TEMPLATE_FILE_OUTPUT=openshift-4-20.yaml \
+  DEFAULT_CHANNEL=pre-ga-0.2
+
+# Run automated test for this flow
+make test-build-catalog-from-resources-template
+```
 
 ## Overview
 

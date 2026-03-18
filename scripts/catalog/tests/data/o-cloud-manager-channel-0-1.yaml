@@ -1,0 +1,23 @@
+---
+# Channel entries for '0.1' channel
+- entries:
+    - name: o-cloud-manager.v0.1.0
+      skipRange: '>=0.1.0 <0.1.0'
+    - name: o-cloud-manager.v0.1.1
+      replaces: o-cloud-manager.v0.1.0
+      skipRange: '>=0.1.0 <0.1.1'
+    - name: o-cloud-manager.v0.1.2
+      replaces: o-cloud-manager.v0.1.1
+      skipRange: '>=0.1.0 <0.1.2'
+  name: 'pre-ga-0.1'
+  package: o-cloud-manager
+  schema: olm.channel
+# 0.1.0 bundle
+- image: registry.redhat.io/openshift4/o-cloud-manager-operator-bundle@sha256:d403352abf14d6553da6665e47342927500608f2646cb17eac80414f44320ae0
+  schema: olm.bundle
+# 0.1.1 bundle
+- image: registry.redhat.io/openshift4/o-cloud-manager-operator-bundle@sha256:d403352abf14d6553da6665e47342927500608f2646cb17eac80414f44320ae0
+  schema: olm.bundle
+# 0.1.next bundle
+- image: registry.redhat.io/openshift4/o-cloud-manager-operator-bundle@sha256:d403352abf14d6553da6665e47342927500608f2646cb17eac80414f44320ae0
+  schema: olm.bundle
