@@ -13,7 +13,7 @@ check_preconditions() {
 
     command -v yq >/dev/null 2>&1 || { echo "Error: yq seems not to be installed." >&2; exit 1; }
 
-  echo "Checking pre-conditions completed!"
+    echo "Checking pre-conditions completed!"
     return 0
 }
 
