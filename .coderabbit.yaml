@@ -1,0 +1,276 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+# CodeRabbit configuration for telco5g-konflux
+# Telco5G/Konflux shared utility scripts and Makefiles repository
+# Consumed as a git submodule by downstream operator repos
+#
+# IMPORTANT — What this configuration introduces:
+# - Automated AI-powered code reviews on every PR to main (incremental, skips drafts)
+# - Assertive review profile with domain-specific instructions for shell scripts,
+#   YAML, Makefiles, GitHub Actions workflows, and each scripts/ subdirectory
+# - Static analysis via ShellCheck, yamllint, actionlint, checkmake, markdownlint,
+#   LanguageTool, Gitleaks, and TruffleHog (all other language tools disabled)
+# - Auto-generated PR walkthrough with summary, sequence diagrams, effort estimate,
+#   related issues/PRs, and label suggestions
+# - Pre-merge checks: PR title format validation and shell script safety verification
+# - Custom "fix-failing-tests" finishing touch for CI failure diagnosis
+# - Interactive chat via @coderabbitai mentions in PR comments
+
+language: en-US
+
+tone_instructions: >
+  Be direct and technical. This repo is maintained by infrastructure/platform
+  engineers working on Telco5G/OpenShift operators. Prioritize actionable
+  feedback over verbose explanations.
+
+early_access: true
+
+reviews:
+  profile: assertive
+
+  request_changes_workflow: false
+  collapse_walkthrough: true
+
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  high_level_summary_in_walkthrough: true
+  high_level_summary_instructions: >
+    Summarize the changes as concise bullet points. For shell script changes,
+    note any behavioral impact. For YAML changes, note structural or
+    configuration impact.
+
+  changed_files_summary: true
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  suggested_labels: true
+  poem: false
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    base_branches:
+      - main
+    auto_pause_after_reviewed_commits: 5
+
+  path_filters:
+    - "!venv/**"
+    - "!**/__pycache__/**"
+    - "!**/*.pyc"
+    - "!test.json"
+    - "!**/expected/**"
+
+  path_instructions:
+    - path: "**"
+      instructions: >
+        This repository contains shared Telco5G/Konflux utility scripts and
+        Makefiles consumed as a git submodule by downstream operator repos. Changes
+        here can have wide blast radius. Pay special attention to: backward
+        compatibility of script interfaces (arguments, environment variables, exit
+        codes), idempotency of operations, and consistency with existing patterns in
+        the codebase. When reviewing shell scripts, be thorough about error
+        handling, variable quoting, and POSIX compatibility. For test changes,
+        verify that expected output fixtures are kept in sync with script behavior
+        changes.
+
+    - path: "**/*.sh"
+      instructions: >
+        This is a Bash shell script in a Telco/Konflux utilities repo. Review
+        for: (1) POSIX compliance and portability across bash 4.x+; (2) proper
+        error handling with set -euo pipefail or equivalent; (3) correct quoting
+        of variables to prevent word splitting and globbing; (4) avoidance of
+        common shellcheck pitfalls (SC2086, SC2046, SC2155, etc.); (5) proper
+        use of local for function variables; (6) secure handling of paths, URLs,
+        and external input — no eval on untrusted data; (7) idempotency where
+        appropriate; (8) clarity of exit codes and error messages. If a test is
+        failing, suggest concrete fixes with corrected shell code.
+
+    - path: "**/*.yaml"
+      instructions: >
+        This is a YAML configuration file in a Kubernetes/OpenShift/Konflux
+        ecosystem repo. Review for: (1) valid YAML syntax; (2) correct
+        indentation (2 spaces); (3) no trailing whitespace; (4) proper use of
+        anchors/aliases if present; (5) for GitHub Actions workflow files,
+        validate action version pinning, correct on trigger syntax, and
+        job/step structure; (6) for operator-related YAML (CSVs, catalogs),
+        check structural correctness.
+
+    - path: "**/*.yml"
+      instructions: >
+        This is a YAML configuration file in a Kubernetes/OpenShift/Konflux
+        ecosystem repo. Review for: (1) valid YAML syntax; (2) correct
+        indentation (2 spaces); (3) no trailing whitespace; (4) proper use of
+        anchors/aliases if present; (5) for GitHub Actions workflow files,
+        validate action version pinning, correct on trigger syntax, and
+        job/step structure; (6) for operator-related YAML (CSVs, catalogs),
+        check structural correctness.
+
+    - path: "**/Makefile"
+      instructions: >
+        This is a GNU Makefile. Review for: (1) correct use of .PHONY
+        declarations; (2) proper variable quoting and escaping; (3) correct
+        dependency chains; (4) recipe indentation with tabs not spaces;
+        (5) avoidance of shell injection via unquoted variables; (6) consistent
+        use of $(VARIABLE) syntax; (7) clear help/documentation targets.
+
+    - path: "**/*.mk"
+      instructions: >
+        This is a GNU Makefile. Review for: (1) correct use of .PHONY
+        declarations; (2) proper variable quoting and escaping; (3) correct
+        dependency chains; (4) recipe indentation with tabs not spaces;
+        (5) avoidance of shell injection via unquoted variables; (6) consistent
+        use of $(VARIABLE) syntax; (7) clear help/documentation targets.
+
+    - path: "test/overlay/**/*.sh"
+      instructions: >
+        This is a shell-based integration test for the Konflux bundle overlay
+        system. Review for: (1) proper sourcing of common-test-lib.sh;
+        (2) correct use of the run_csv_overlay_test function from the shared
+        framework; (3) accurate expected output in expected/ directories;
+        (4) adequate edge case coverage; (5) clear test names and failure
+        messages. If a test failure is detected (e.g., from CI logs or diffs),
+        suggest exact fixes to the test script or expected data.
+
+    - path: "scripts/download/**"
+      instructions: >
+        These scripts download CLI tools (yq, opm, jq, operator-sdk, yamllint,
+        shellcheck, bashate, go tools). Review for: (1) checksum/integrity
+        verification of downloaded binaries; (2) correct URL construction and
+        version pinning; (3) fallback behavior on download failure; (4) proper
+        cleanup of temp files; (5) cross-platform path handling.
+
+    - path: "scripts/rpm-lock/**"
+      instructions: >
+        These scripts generate RPM lock files for RHEL8/RHEL9 using
+        podman/UBI images. Review for: (1) correct podman invocations and
+        volume mounts; (2) proper RHEL version detection; (3) RHSM
+        subscription handling; (4) lock file format correctness;
+        (5) idempotent behavior.
+
+    - path: "scripts/catalog/**"
+      instructions: >
+        These scripts handle FBC (File-Based Catalog) operations for operator
+        catalogs. Review for: (1) correct use of opm and operator-sdk
+        commands; (2) proper catalog template structure; (3) diff/compare
+        logic correctness; (4) validation completeness.
+
+    - path: ".github/workflows/**"
+      instructions: >
+        These are GitHub Actions CI workflow files. Review for: (1) action
+        version pinning (prefer SHA pinning); (2) correct trigger
+        configuration; (3) proper error handling and artifact upload on
+        failure; (4) runner security (avoid running untrusted code with
+        elevated permissions); (5) step dependency correctness.
+
+  # NOTE: The labels below must be created in the GitHub repository settings
+  # (Settings > Labels) before CodeRabbit can apply them to PRs. If they don't
+  # exist, CodeRabbit will suggest them in the walkthrough comment but won't be
+  # able to assign them automatically.
+  labeling_instructions:
+    - label: scripts
+      instructions: "Apply when the PR modifies files under scripts/"
+    - label: tests
+      instructions: "Apply when the PR modifies files under test/"
+    - label: ci
+      instructions: "Apply when the PR modifies GitHub Actions workflows under .github/workflows/"
+    - label: lint
+      instructions: "Apply when the PR modifies linting configuration (Makefile lint targets, .yamllint.yaml, requirements.txt)"
+    - label: docs
+      instructions: "Apply when the PR modifies documentation files (*.md, README, SUBMODULE_USAGE.md)"
+    - label: overlay
+      instructions: "Apply when the PR modifies bundle overlay scripts or tests (scripts/bundle/, test/overlay/)"
+    - label: breaking-change
+      instructions: "Apply when the PR changes script interfaces, arguments, environment variables, or exit codes in a backward-incompatible way"
+
+  tools:
+    # Disabled — already run in-repo via make lint and the make-all.yaml workflow
+    shellcheck:
+      enabled: false
+    yamllint:
+      enabled: false
+    actionlint:
+      enabled: true
+    checkmake:
+      enabled: true
+    markdownlint:
+      enabled: true
+    languagetool:
+      enabled: true
+    gitleaks:
+      enabled: true
+    trufflehog:
+      enabled: true
+
+    # Disabled — no relevant source code in this repo
+    eslint:
+      enabled: false
+    biome:
+      enabled: false
+    ruff:
+      enabled: false
+    pylint:
+      enabled: false
+    flake8:
+      enabled: false
+    golangci-lint:
+      enabled: false
+    hadolint:
+      enabled: false
+    swiftlint:
+      enabled: false
+    phpstan:
+      enabled: false
+    detekt:
+      enabled: false
+    clippy:
+      enabled: false
+
+  finishing_touches:
+    unit_tests:
+      enabled: false
+    docstrings:
+      enabled: false
+    simplify:
+      enabled: true
+    custom:
+      - name: "fix-failing-tests"
+        instructions: >
+          Analyze the failing CI checks (overlay tests, download script tests,
+          RPM lock tests). For each failure: (1) identify the root cause from
+          the CI log output; (2) determine if the failure is in the test script,
+          the tested script, or the expected output fixture; (3) provide an
+          exact code fix. For overlay test failures, check if the expected/
+          directory output matches the actual overlay script output and fix the
+          diff. For shellcheck/bashate lint failures, provide the corrected
+          shell code.
+
+  pre_merge_checks:
+    title:
+      mode: warning
+      requirements: >
+        PR title must be concise, descriptive, and follow the pattern:
+        <area>: <description> (e.g., overlay: fix CSV merge for 4.20,
+        download: add checksum verification for yq)
+    description:
+      mode: warning
+    custom_checks:
+      - name: "shell-script-safety"
+        mode: warning
+        instructions: >
+          Verify that all new or modified shell scripts: (1) include
+          set -euo pipefail or equivalent safety flags; (2) do not use eval on
+          external input; (3) properly quote all variable expansions; (4) use
+          local for function-scoped variables; (5) have meaningful exit codes
+          for error conditions.
+
+chat:
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: auto
+  web_search:
+    enabled: true
+  code_guidelines:
+    enabled: true
