@@ -1,0 +1,61 @@
+---
+# Channel entries for 'stable' channel
+- entries:
+    # v4.20.0
+    - name: o-cloud-manager.v4.20.0
+      skipRange: '>=4.9.0 <4.20.0'
+    # v4.20.1
+    - name: o-cloud-manager.v4.20.1
+      replaces: o-cloud-manager.v4.20.0
+      skipRange: '>=4.9.0 <4.20.1'
+    # v4.20.2
+    - name: o-cloud-manager.v4.20.2
+      replaces: o-cloud-manager.v4.20.1
+      skipRange: '>=4.9.0 <4.20.2'
+  name: stable
+  package: o-cloud-manager
+  schema: olm.channel
+# Channel entries for '4.20' channel
+- entries:
+    # v4.20.0
+    - name: o-cloud-manager.v4.20.0
+      skipRange: '>=4.9.0 <4.20.0'
+    # v4.20.1
+    - name: o-cloud-manager.v4.20.1
+      replaces: o-cloud-manager.v4.20.0
+      skipRange: '>=4.9.0 <4.20.1'
+    # v4.20.2
+    - name: o-cloud-manager.v4.20.2
+      replaces: o-cloud-manager.v4.20.1
+      skipRange: '>=4.9.0 <4.20.2'
+  name: "4.20"
+  package: o-cloud-manager
+  schema: olm.channel
+# v4.20.0 bundle
+- image: registry.redhat.io/openshift4/o-cloud-manager-operator-bundle@sha256:2147b542ddcc54717fd9c7e7d944a357280c6416f7d860400365667ad9de744d
+  schema: olm.bundle
+# v4.20.1 bundle
+- image: registry.redhat.io/openshift4/o-cloud-manager-operator-bundle@sha256:d403352abf14d6553da6665e47342927500608f2646cb17eac80414f44320ae0
+  schema: olm.bundle
+# v4.20.2 bundle
+- image: registry.redhat.io/openshift4/o-cloud-manager-operator-bundle@sha256:ad0ba9d89dc67c7d7acf35c3ae2e5a0abe1c2e9edb98be9ed14083a4a5cb3ed7
+  schema: olm.bundle
+# Deprecation notices for older bundles
+- entries:
+    - message: |
+        o-cloud-manager.v4.20.0 is deprecated. Uninstall and install o-cloud-manager.v0.1.0 or higher for support.
+      reference:
+        name: o-cloud-manager.v4.20.0
+        schema: olm.bundle
+    - message: |
+        o-cloud-manager.v4.20.1 is deprecated. Uninstall and install o-cloud-manager.v0.1.0 or higher for support.
+      reference:
+        name: o-cloud-manager.v4.20.1
+        schema: olm.bundle
+    - message: |
+        o-cloud-manager.v4.20.2 is deprecated. Uninstall and install o-cloud-manager.v0.1.0 or higher for support.
+      reference:
+        name: o-cloud-manager.v4.20.2
+        schema: olm.bundle
+  package: o-cloud-manager
+  schema: olm.deprecations

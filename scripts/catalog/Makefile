@@ -21,6 +21,10 @@ CATALOG_TEMPLATE_FILE_OUTPUT ?= .konflux/catalog/catalog-template.out.yaml
 BUNDLE_BUILDS_FILE ?= .konflux/catalog/bundle.builds.in.yaml
 CATALOG_OUTPUT_FORMAT ?= yaml
 CATALOG_FILE ?= catalog.$(CATALOG_OUTPUT_FORMAT)
+RESOURCES_TEMPLATE_FILE_INPUT ?= tests/data/openshift-4-20-template.in.yaml
+RESOURCES_TEMPLATE_FILE_OUTPUT ?= openshift-4-20.yaml
+DEFAULT_CHANNEL ?=
+DEFAULT_CHANNEL_ARG := $(if $(strip $(DEFAULT_CHANNEL)),--set-default-channel "$(DEFAULT_CHANNEL)",)
 
 # Konflux-specific variables
 CATALOG_TEMPLATE_KONFLUX_INPUT ?= $(CATALOG_TEMPLATE_FILE_INPUT)
@@ -85,6 +89,19 @@ validate-production-images: ## Validate related images for production (use CATAL
 	@echo "Validating related images for production..."
 	@echo "  Catalog file: $(CATALOG_FILE)"
 	$(SCRIPT_DIR)/konflux-validate-related-images-production.sh --set-catalog-file $(CATALOG_FILE)
+
+.PHONY: build-catalog-from-resources-template
+build-catalog-from-resources-template: yq ## Build catalog YAML from a resources template (.resources -> concatenated entries)
+	@echo "Building catalog from resources template..."
+	@echo "  Input template file: $(RESOURCES_TEMPLATE_FILE_INPUT)"
+	@echo "  Output catalog file: $(RESOURCES_TEMPLATE_FILE_OUTPUT)"
+	@echo "  Default channel: $(if $(strip $(DEFAULT_CHANNEL)),$(DEFAULT_CHANNEL),<unchanged>)"
+	$(SCRIPT_DIR)/konflux-build-catalog-from-resources-template.sh --set-template-input-file $(RESOURCES_TEMPLATE_FILE_INPUT) --set-template-output-file $(RESOURCES_TEMPLATE_FILE_OUTPUT) $(DEFAULT_CHANNEL_ARG)
+
+.PHONY: test-build-catalog-from-resources-template
+test-build-catalog-from-resources-template: yq opm ## Run test for resources-template catalog builder
+	@echo "Running catalog builder test..."
+	@PATH="$(abspath $(TOOL_DIR)):$$PATH" $(SCRIPT_DIR)/tests/test-build-catalog-from-resources-template.sh
 
 .PHONY: konflux-validate-catalog-template-bundle
 konflux-validate-catalog-template-bundle: yq operator-sdk ## Validate the last bundle entry on the catalog template file
@@ -159,6 +176,9 @@ help: ## Display available targets
 	@echo "  CATALOG_TEMPLATE_FILE_OUTPUT   Path to output catalog template file (default: $(CATALOG_TEMPLATE_FILE_OUTPUT))"
 	@echo "  BUNDLE_BUILDS_FILE       Path to bundle builds file (default: $(BUNDLE_BUILDS_FILE))"
 	@echo "  CATALOG_FILE             Path to catalog file (default: $(CATALOG_FILE))"
+	@echo "  RESOURCES_TEMPLATE_FILE_INPUT   Path to input resources template file (default: $(RESOURCES_TEMPLATE_FILE_INPUT))"
+	@echo "  RESOURCES_TEMPLATE_FILE_OUTPUT  Path to output catalog generated from resources (default: $(RESOURCES_TEMPLATE_FILE_OUTPUT))"
+	@echo "  DEFAULT_CHANNEL         Optional default channel replacement value for \$$\{default_channel\} placeholders (default: empty)"
 	@echo "  CATALOG_TEMPLATE_KONFLUX_INPUT   Input catalog template for Konflux operations (default: $(CATALOG_TEMPLATE_KONFLUX_INPUT))"
 	@echo "  CATALOG_TEMPLATE_KONFLUX_OUTPUT  Output catalog template for Konflux operations (default: $(CATALOG_TEMPLATE_KONFLUX_OUTPUT))"
 	@echo "  PACKAGE_NAME_KONFLUX     Package name for Konflux operations (default: $(PACKAGE_NAME_KONFLUX))"
@@ -178,6 +198,9 @@ help: ## Display available targets
 	@echo "  make update-catalog-template                              # Use default files"
 	@echo "  make update-catalog-template CATALOG_TEMPLATE_FILE_INPUT=input.yaml CATALOG_TEMPLATE_FILE_OUTPUT=output.yaml  # Separate input/output files"
 	@echo "  make validate-production-images CATALOG_FILE=my-catalog.yaml  # Use custom catalog"
+	@echo "  make build-catalog-from-resources-template RESOURCES_TEMPLATE_FILE_INPUT=tests/data/openshift-4-20-template.in.yaml RESOURCES_TEMPLATE_FILE_OUTPUT=openshift-4-20.yaml"
+	@echo "  make build-catalog-from-resources-template DEFAULT_CHANNEL=pre-ga-0.2"
+	@echo "  make test-build-catalog-from-resources-template               # Run resources-template builder test"
 	@echo "  make konflux-validate-catalog-template-bundle            # Validate using default input/output"
 	@echo "  make konflux-validate-catalog-template-bundle CATALOG_TEMPLATE_KONFLUX_INPUT=input.yaml CATALOG_TEMPLATE_KONFLUX_OUTPUT=output.yaml  # Use custom input/output"
 	@echo "  make konflux-generate-catalog                             # Generate quay.io catalog"
