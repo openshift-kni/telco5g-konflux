@@ -133,23 +133,22 @@ fi
 echo
 echo "Test 4: Script execution validation"
 
+# We will use UBI images with or without RHSM credentials.
+export RHEL9_EXECUTION_IMAGE="registry.access.redhat.com/ubi9/ubi:latest"
+export RHEL9_IMAGE_TO_LOCK="registry.access.redhat.com/ubi9/ubi-minimal:latest"
+
 # Determine test mode based on environment variables
 if [[ -n "${RHEL9_ACTIVATION_KEY:-}" && -n "${RHEL9_ORG_ID:-}" && \
     "${RHEL9_ACTIVATION_KEY}" != "placeholder" && "${RHEL9_ACTIVATION_KEY}" != "1234567890" && \
     "${RHEL9_ORG_ID}" != "placeholder" && "${RHEL9_ORG_ID}" != "1234567890" ]]; then
     print_info "Running script with RHSM credentials (subscription mode)"
     TEST_MODE="RHSM"
-    # Keep existing credentials
-    export RHEL9_EXECUTION_IMAGE="${RHEL9_EXECUTION_IMAGE:-registry.redhat.io/rhel9-4-els/rhel:9.4}"
-    export RHEL9_IMAGE_TO_LOCK="${RHEL9_IMAGE_TO_LOCK:-registry.redhat.io/rhel9-4-els/rhel-minimal:9.4}"
 else
     print_info "Running script without RHSM credentials (UBI mode)"
     TEST_MODE="UBI"
     # Set environment variables for UBI mode (no credentials)
     export RHEL9_ACTIVATION_KEY=""
     export RHEL9_ORG_ID=""
-    export RHEL9_EXECUTION_IMAGE="registry.access.redhat.com/ubi9/ubi:9.4"
-    export RHEL9_IMAGE_TO_LOCK="registry.access.redhat.com/ubi9/ubi-minimal:9.4"
 fi
 
 if [[ "$PODMAN_AVAILABLE" == "true" ]]; then
