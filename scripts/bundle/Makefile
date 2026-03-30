@@ -13,6 +13,17 @@ CSV_FILE ?= clusterserviceversion.yaml
 # Mapping target (staging or production)
 MAPPING_TARGET ?= staging
 
+# Bundle image for validation (required for konflux-validate-bundle-labels-match-annotations-file target)
+BUNDLE_IMAGE ?=
+
+.PHONY: konflux-validate-bundle-labels-match-annotations-file
+konflux-validate-bundle-labels-match-annotations-file: ## Validate bundle image labels match metadata/annotations.yaml (requires BUNDLE_IMAGE)
+	@if [ -z "$(BUNDLE_IMAGE)" ]; then \
+		echo "ERROR: BUNDLE_IMAGE is required. Usage: make konflux-validate-bundle-labels-match-annotations-file BUNDLE_IMAGE=<bundle-image>"; \
+		exit 1; \
+	fi
+	$(SCRIPT_DIR)/konflux-validate-bundle-labels-match-annotations-file.sh "$(BUNDLE_IMAGE)"
+
 .PHONY: bundle-overlay
 bundle-overlay: ## Apply bundle overlay (basic: pinning + release)
 	@echo "Applying bundle overlay..."
@@ -57,6 +68,7 @@ help: ## Display available targets
 	@echo "This Makefile provides targets for bundle overlay operations."
 	@echo ""
 	@echo "Variables:"
+	@echo "  BUNDLE_IMAGE    Bundle image to validate (required for konflux-validate-bundle-labels-match-annotations-file)"
 	@echo "  PINNING_FILE    Path to image pinning file (default: $(PINNING_FILE))"
 	@echo "  RELEASE_FILE    Path to release configuration file (default: $(RELEASE_FILE))"
 	@echo "  MAPPING_FILE    Path to registry mapping file (default: $(MAPPING_FILE))"
@@ -64,6 +76,7 @@ help: ## Display available targets
 	@echo "  MAPPING_TARGET  Registry mapping target: staging|production (default: $(MAPPING_TARGET))"
 	@echo ""
 	@echo "Examples:"
+	@echo "  make konflux-validate-bundle-labels-match-annotations-file BUNDLE_IMAGE=quay.io/example/bundle:latest"
 	@echo "  make bundle-overlay                                      # Basic overlay with defaults"
 	@echo "  make bundle-overlay-with-mapping MAPPING_TARGET=production  # Overlay with production mapping"
 	@echo "  make bundle-overlay CSV_FILE=my-operator.csv             # Use custom CSV file"
@@ -73,3 +86,4 @@ help: ## Display available targets
 	@echo ""
 	@echo "For detailed script help:"
 	@echo "  $(SCRIPT_DIR)/konflux-bundle-overlay.sh --help"
+	@echo "  $(SCRIPT_DIR)/konflux-validate-bundle-labels-match-annotations-file.sh <bundle-image>"
