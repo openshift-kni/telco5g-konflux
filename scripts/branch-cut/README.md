@@ -9,7 +9,7 @@ Branch cut is the process of preparing a new project version. It automatically u
 The script automates two main tasks:
 
 ### 1. Version update on `main`
-- Increments the version number (example: 4.21 → 4.22)
+- Increments the version number (example: 4.21 → 4.22), or bumps to a specific target version (example: 4.22 → 5.0)
 - Updates all version references in the code
 - Renames Tekton pipeline files with the new version
 
@@ -44,6 +44,18 @@ This command will create two branches:
 - `branch-cut-to-4.22` → for PR to `main`
 - `prepare-release-4.21` → for PR to `release-4.21`
 
+### Specifying a target version
+
+By default the script increments the minor version by 1. To bump to a specific version (e.g., a major version change), use `TARGET_VERSION`:
+
+```bash
+make branch-cut-with-git CURRENT_VERSION=4.22.0 TARGET_VERSION=5.0.0
+```
+
+This will create:
+- `branch-cut-to-5.0` → for PR to `main` (replaces 4.22 references with 5.0)
+- `prepare-release-4.22` → for PR to `release-4.22`
+
 ## Complete steps
 
 ### Option 1: With automatic git workflow (recommended)
@@ -51,6 +63,9 @@ This command will create two branches:
 ```bash
 # 1. Execute branch cut (creates local branches and commits)
 make branch-cut-with-git CURRENT_VERSION=4.21.0
+
+# Or with a specific target version:
+# make branch-cut-with-git CURRENT_VERSION=4.22.0 TARGET_VERSION=5.0.0
 
 # 2. Verify changes (script never pushes, review first!)
 git log
@@ -81,6 +96,7 @@ git diff
 | Variable | Description | Example |
 |----------|-------------|---------|
 | `CURRENT_VERSION` | **Required**. Current version | `4.21.0` |
+| `TARGET_VERSION` | Target version to bump to (default: MINOR+1) | `5.0.0` |
 | `EXCLUDE` | Exclude files/directories/extensions | `"docs/,.png,.gz"` |
 | `EXCLUDE_VARS` | Exclude variable assignments from version replacement | `"RUNTIME_IMAGE,OPM_IMAGE"` |
 | `CHECK_UNCOMMITTED` | Check for uncommitted changes | `false` |
@@ -104,6 +120,21 @@ The result will be:
 VERSION=4.22.0
 RUNTIME_IMAGE=registry.io/base:4.21   # <- Not changed
 OPM_IMAGE=registry.io/opm:4.21         # <- Not changed
+```
+
+### Example with target version
+
+```bash
+# Major version bump: 4.22 -> 5.0
+make branch-cut-with-git CURRENT_VERSION=4.22.0 TARGET_VERSION=5.0.0
+
+# Non-sequential minor bump: 4.21 -> 4.25
+make branch-cut-with-git CURRENT_VERSION=4.21.0 TARGET_VERSION=4.25.0
+
+# Combine with exclusions
+make branch-cut-with-git CURRENT_VERSION=4.22.0 TARGET_VERSION=5.0.0 \
+  EXCLUDE="docs/,.png" \
+  EXCLUDE_VARS="RUNTIME_IMAGE,OPM_IMAGE"
 ```
 
 ### Example with exclusions

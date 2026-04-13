@@ -8,10 +8,13 @@ cat << EOF
 NAME
     $SCRIPT_NAME - perform branch cut operations for a new release
 SYNOPSIS
-    $SCRIPT_NAME --current-version VERSION [--project-root DIR] [--exclude LIST]
+    $SCRIPT_NAME --current-version VERSION [--target-version VERSION] [--project-root DIR] [--exclude LIST]
 EXAMPLES
-    - Perform full branch cut from 4.21.0:
+    - Perform full branch cut from 4.21.0 (auto-increments to 4.22.0):
             $ $SCRIPT_NAME --current-version 4.21.0
+
+    - Perform branch cut with explicit target version (e.g., major bump):
+            $ $SCRIPT_NAME --current-version 4.22.0 --target-version 5.0.0
 DESCRIPTION
     This script performs the complete branch cut workflow:
     1. On main branch - Version bump:
@@ -25,6 +28,10 @@ DESCRIPTION
 ARGS
     --current-version VERSION
         Current version (e.g., 4.21.0 or 4.21). Patch is normalized to .0 when computing the new version.
+    --target-version VERSION
+        Target version to bump to (e.g., 5.0.0 or 5.0). If omitted, the minor version is incremented
+        by 1 (MAJOR.MINOR -> MAJOR.(MINOR+1)). Use this to perform non-sequential bumps such as
+        major version changes (4.22 -> 5.0).
     --project-root DIR
         Project root directory. Defaults to the current git repository root or current working directory if not a git repo.
   --exclude LIST | --exclude PATH
@@ -46,6 +53,7 @@ parse_args() {
             exit 1
     fi
     CURRENT_VERSION=""
+    TARGET_VERSION=""
     PROJECT_ROOT=""
     EXCLUDES=()
     EXCLUDE_EXTS=()
@@ -62,6 +70,14 @@ parse_args() {
                 exit 1
             fi
             CURRENT_VERSION="$2"
+            shift 2
+            ;;
+        --target-version)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --target-version requires a value" >&2
+                exit 1
+            fi
+            TARGET_VERSION="$2"
             shift 2
             ;;
         --project-root)
@@ -145,16 +161,37 @@ normalize_and_compute_versions() {
     fi
     MAJOR="${BASH_REMATCH[1]}"
     MINOR="${BASH_REMATCH[2]}"
-    # Compute new minor
-    NEW_MINOR=$((10#$MINOR + 1))
+
+    local new_major new_minor
+    if [[ -n "$TARGET_VERSION" ]]; then
+            # Use explicitly provided target version
+            if [[ ! "$TARGET_VERSION" =~ ^([0-9]+)\.([0-9]+)(\.([0-9]+))?$ ]]; then
+                echo "Error: invalid target version format '$TARGET_VERSION' (expected MAJOR.MINOR or MAJOR.MINOR.PATCH)" >&2
+                exit 1
+            fi
+            new_major="${BASH_REMATCH[1]}"
+            new_minor="${BASH_REMATCH[2]}"
+            # Validate target is different from current
+            if [[ "$new_major" -eq "$MAJOR" && "$new_minor" -eq "$MINOR" ]]; then
+                echo "Error: target version '$TARGET_VERSION' is the same as current version '$ver'" >&2
+                exit 1
+            fi
+    else
+            # Default: increment minor by 1
+            new_major="$MAJOR"
+            new_minor=$((10#$MINOR + 1))
+    fi
+
+    NEW_MAJOR="$new_major"
+    NEW_MINOR="$new_minor"
     # Old variants (what to search)
     OLD_DOT="${MAJOR}.${MINOR}"
     OLD_FULL="${MAJOR}.${MINOR}.0"
     OLD_DASH="${MAJOR}-${MINOR}"
     # New variants (what to replace with)
-    NEW_DOT="${MAJOR}.${NEW_MINOR}"
-    NEW_FULL="${MAJOR}.${NEW_MINOR}.0"
-    NEW_DASH="${MAJOR}-${NEW_MINOR}"
+    NEW_DOT="${NEW_MAJOR}.${NEW_MINOR}"
+    NEW_FULL="${NEW_MAJOR}.${NEW_MINOR}.0"
+    NEW_DASH="${NEW_MAJOR}-${NEW_MINOR}"
     # Compute release branch name (release-X.Y)
     RELEASE_BRANCH="release-${MAJOR}.${MINOR}"
 }
@@ -336,7 +373,7 @@ rename_tekton_pipelines() {
             if [[ "$filename" =~ -${MAJOR}-${MINOR}- ]]; then
         # Replace old version with new version in filename
         local new_filename
-        new_filename="${filename//-${MAJOR}-${MINOR}-/-${MAJOR}-${NEW_MINOR}-}"
+        new_filename="${filename//-${MAJOR}-${MINOR}-/-${NEW_MAJOR}-${NEW_MINOR}-}"
         if [[ "$filename" != "$new_filename" ]]; then
             local old_path="$dirname_part/$filename"
             local new_path="$dirname_part/$new_filename"
