@@ -17,12 +17,16 @@ EXCLUDE_ARG := $(if $(strip $(EXCLUDE)),--exclude $(EXCLUDE),)
 EXCLUDE_VARS ?=
 EXCLUDE_VARS_ARG := $(if $(strip $(EXCLUDE_VARS)),--exclude-vars $(EXCLUDE_VARS),)
 
+# Target version (optional): set to override the default MINOR+1 bump (e.g., 5.0 for a major bump)
+TARGET_VERSION ?=
+TARGET_VERSION_ARG := $(if $(strip $(TARGET_VERSION)),--target-version $(TARGET_VERSION),)
+
 # Check for uncommitted changes before switching branches (default: true)
 CHECK_UNCOMMITTED ?= true
 
-# Compute new version from CURRENT_VERSION (X.Y.Z -> X.(Y+1))
+# Compute new version from CURRENT_VERSION and optional TARGET_VERSION
 define compute_new_version
-$(shell echo "$(CURRENT_VERSION)" | sed -E 's/^([0-9]+)\.([0-9]+).*/\1.\2/' | awk -F. '{print $$1"."($$2+1)}')
+$(if $(strip $(TARGET_VERSION)),$(shell echo "$(TARGET_VERSION)" | sed -E 's/^([0-9]+)\.([0-9]+).*/\1.\2/'),$(shell echo "$(CURRENT_VERSION)" | sed -E 's/^([0-9]+)\.([0-9]+).*/\1.\2/' | awk -F. '{print $$1"."($$2+1)}'))
 endef
 
 # Compute release branch name from CURRENT_VERSION (X.Y.Z -> release-X.Y)
@@ -43,7 +47,7 @@ branch-cut: ## Perform full branch cut (bump on main + prepare release branch)
 	@echo "Branch cut: $(CURRENT_VERSION) -> $(NEW_VERSION)"
 	@echo "Release branch: $(RELEASE_BRANCH)"
 	@echo ""
-	$(SCRIPT_DIR)/konflux-branch-cut.sh --current-version "$(CURRENT_VERSION)" --project-root "$(PROJECT_ROOT)" $(EXCLUDE_ARG) $(EXCLUDE_VARS_ARG)
+	$(SCRIPT_DIR)/konflux-branch-cut.sh --current-version "$(CURRENT_VERSION)" --project-root "$(PROJECT_ROOT)" $(TARGET_VERSION_ARG) $(EXCLUDE_ARG) $(EXCLUDE_VARS_ARG)
 
 # Example:
 #   make branch-cut-with-git CURRENT_VERSION=4.21.0
@@ -77,7 +81,7 @@ branch-cut-with-git: ## Perform full branch cut with git workflow (fetch, branch
 	@git -C "$(PROJECT_ROOT)" checkout -b "$(BRANCH_NAME)"
 	@echo ""
 	@echo "==> Performing branch cut..."
-	$(SCRIPT_DIR)/konflux-branch-cut.sh --current-version "$(CURRENT_VERSION)" --project-root "$(PROJECT_ROOT)" $(EXCLUDE_ARG) $(EXCLUDE_VARS_ARG)
+	$(SCRIPT_DIR)/konflux-branch-cut.sh --current-version "$(CURRENT_VERSION)" --project-root "$(PROJECT_ROOT)" $(TARGET_VERSION_ARG) $(EXCLUDE_ARG) $(EXCLUDE_VARS_ARG)
 	@echo ""
 	@echo "==> Staging and committing changes on current branch..."
 	@git -C "$(PROJECT_ROOT)" add -A
@@ -113,6 +117,7 @@ help: ## Display available targets
 	@echo ""
 	@echo "Variables:"
 	@echo "  CURRENT_VERSION     Current version to branch cut from (e.g., 4.21.0)"
+	@echo "  TARGET_VERSION      Target version to bump to (optional, default: MINOR+1)"
 	@echo "  PROJECT_ROOT        Project root directory (default: repo root)"
 	@echo "  EXCLUDE             Comma/space-separated: paths or extensions (use .ext, e.g., .gz)"
 	@echo "  EXCLUDE_VARS        Comma/space-separated: variable names to skip in replacements (e.g., RUNTIME_IMAGE,OPM_IMAGE)"
@@ -121,6 +126,7 @@ help: ## Display available targets
 	@echo "Examples:"
 	@echo "  make branch-cut CURRENT_VERSION=4.21.0"
 	@echo "  make branch-cut-with-git CURRENT_VERSION=4.21.0"
+	@echo "  make branch-cut CURRENT_VERSION=4.22.0 TARGET_VERSION=5.0.0"
 	@echo "  make branch-cut CURRENT_VERSION=4.21.0 EXCLUDE=\"docs/,.png\""
 	@echo "  make branch-cut CURRENT_VERSION=4.21.0 EXCLUDE_VARS=\"RUNTIME_IMAGE,OPM_IMAGE\""
 	@echo ""
