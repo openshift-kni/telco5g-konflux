@@ -19,9 +19,21 @@ The script automates two main tasks:
 
 ## Prerequisites
 
-**Important**: The `release-X.Y` branch must exist before executing the branch cut.
+1. **The `release-X.Y` branch must exist** before executing the branch cut.
+   Example: If you're doing branch cut from 4.21.0, the `release-4.21` branch must exist.
 
-Example: If you're doing branch cut from 4.21.0, the `release-4.21` branch must exist.
+2. **If working from a fork**, ensure your `origin` remote is up to date with `upstream` before running the script. The script fetches and checks out branches from `origin`, so stale references will cause failures or incorrect results.
+
+   ```bash
+   git fetch upstream main
+   git checkout main
+   git merge upstream/main
+   git push origin main
+
+   # Also sync the release branch
+   git fetch upstream release-4.21
+   git push origin upstream/release-4.21:refs/heads/release-4.21
+   ```
 
 ## Important Notes
 
