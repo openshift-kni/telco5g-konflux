@@ -28,9 +28,10 @@ TEST_MODULE_OLD="golang.org/x/tools/cmd/goimports@v0.24.0"
 TEST_MODULE_NEW="golang.org/x/tools/cmd/goimports@v0.25.0"
 TEST_MODULE_INVALID="invalid/module/path@v999.999.999"
 
-# Alternative tool for testing (has version support)
-TEST_TOOL_VERSIONED="golangci-lint"
-TEST_MODULE_VERSIONED="github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.0"
+# Alternative tool and versions for testing version mismatch / match
+TEST_TOOL_VERSIONED="goimports"
+TEST_MODULE_VERSIONED="golang.org/x/tools/cmd/goimports@v0.25.0"
+TEST_MODULE_VERSIONED_OLD="golang.org/x/tools/cmd/goimports@v0.24.0"
 
 # Utility functions
 log() {
@@ -113,6 +114,36 @@ EOF
     chmod +x "$install_path"
 }
 
+# Build a Go tool binary for a different GOOS/GOARCH than the host.
+# The result has embedded module metadata but cannot execute on this platform.
+build_cross_compiled_go_tool() {
+    local install_path="$1"
+    local go_module="$2"
+    local wrong_goos wrong_goarch
+
+    wrong_goos=linux
+    wrong_goarch=arm64
+    if [[ "$(go env GOOS)" == "linux" && "$(go env GOARCH)" == "arm64" ]]; then
+        wrong_goos=darwin
+        wrong_goarch=amd64
+    fi
+
+    local temp_dir package_path
+    temp_dir=$(mktemp -d)
+    package_path="${go_module%%@*}"
+
+    if ! (
+        cd "$temp_dir"
+        go mod init tmp > /dev/null 2>&1
+        GOOS="$wrong_goos" GOARCH="$wrong_goarch" go get "$go_module" > /dev/null 2>&1
+        GOOS="$wrong_goos" GOARCH="$wrong_goarch" go build -o "$install_path" "$package_path"
+    ); then
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    rm -rf "$temp_dir"
+}
+
 test_download_valid_tool() {
     log_test_start "Download valid Go tool to empty directory"
 
@@ -142,12 +173,15 @@ test_download_versioned_tool() {
     if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_VERSIONED" "$TEST_MODULE_VERSIONED" >> "$TEST_LOG_FILE" 2>&1; then
         # Check if binary was created
         if [[ -x "$test_dir/$TEST_TOOL_VERSIONED" ]]; then
-            # Try to get version (should work for golangci-lint)
+            local expected_version="${TEST_MODULE_VERSIONED##*@}"
             local version_output
-            if version_output=$("$test_dir/$TEST_TOOL_VERSIONED" --version 2>/dev/null | head -1); then
-                log_test_pass "Download Go tool with version support (version: $version_output)"
+            version_output=$(go version -m "$test_dir/$TEST_TOOL_VERSIONED" 2>/dev/null | awk '$1 == "mod" {print $3; exit}')
+            if [[ -z "$version_output" ]]; then
+                log_test_fail "Download Go tool with version support" "Missing embedded module version"
+            elif [[ "$version_output" != "$expected_version" ]]; then
+                log_test_fail "Download Go tool with version support" "Version mismatch: expected $expected_version, got $version_output"
             else
-                log_test_pass "Download Go tool with version support (version check unavailable)"
+                log_test_pass "Download Go tool with version support (version: $version_output)"
             fi
         else
             log_test_fail "Download Go tool with version support" "Binary not created"
@@ -177,19 +211,14 @@ test_version_mismatch_reinstall() {
     local test_dir="${TEST_INSTALL_DIR}/version_mismatch"
     mkdir -p "$test_dir"
 
-    # Use golangci-lint for this test since it supports version checking
-    local old_version_module="github.com/golangci/golangci-lint/cmd/golangci-lint@v1.59.0"
-    local new_version_module="github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.0"
-
     # First install the old version using the actual script
-    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_VERSIONED" "$old_version_module" >> "$TEST_LOG_FILE" 2>&1; then
+    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_VERSIONED" "$TEST_MODULE_VERSIONED_OLD" >> "$TEST_LOG_FILE" 2>&1; then
         # Then try to install newer version (should detect version mismatch and reinstall)
-        if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_VERSIONED" "$new_version_module" >> "$TEST_LOG_FILE" 2>&1; then
+        if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_VERSIONED" "$TEST_MODULE_VERSIONED" >> "$TEST_LOG_FILE" 2>&1; then
             if [[ -x "$test_dir/$TEST_TOOL_VERSIONED" ]]; then
-                # Verify the version was actually updated
                 local version_output
-                if version_output=$("$test_dir/$TEST_TOOL_VERSIONED" --version 2>/dev/null | head -1); then
-                    if echo "$version_output" | grep -q "v1.60.0"; then
+                if version_output=$(go version -m "$test_dir/$TEST_TOOL_VERSIONED" 2>/dev/null | awk '$1 == "mod" {print $3; exit}'); then
+                    if echo "$version_output" | grep -q "v0.25.0"; then
                         log_test_pass "Reinstall when version changes"
                     else
                         log_test_fail "Reinstall when version changes" "Version not updated: $version_output"
@@ -214,13 +243,10 @@ test_version_match_skip() {
     local test_dir="${TEST_INSTALL_DIR}/version_match"
     mkdir -p "$test_dir"
 
-    # Use golangci-lint for this test since it supports version checking
-    local version_module="github.com/golangci/golangci-lint/cmd/golangci-lint@v1.60.0"
-
     # First install the tool
-    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_VERSIONED" "$version_module" >> "$TEST_LOG_FILE" 2>&1; then
+    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_VERSIONED" "$TEST_MODULE_VERSIONED" >> "$TEST_LOG_FILE" 2>&1; then
         # Then try to install the same version again (should skip download)
-        if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_VERSIONED" "$version_module" >> "$TEST_LOG_FILE" 2>&1; then
+        if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_VERSIONED" "$TEST_MODULE_VERSIONED" >> "$TEST_LOG_FILE" 2>&1; then
             log_test_pass "Skip download when version matches"
         else
             log_test_fail "Skip download when version matches" "Script failed on second run"
@@ -311,6 +337,101 @@ test_invalid_module_format() {
     fi
 }
 
+test_non_runnable_binary_reinstall() {
+    log_test_start "Reinstall when binary is not runnable (wrong arch simulation)"
+
+    local test_dir="${TEST_INSTALL_DIR}/non_runnable"
+    mkdir -p "$test_dir"
+
+    local version_module="golang.org/x/tools/cmd/goimports@v0.24.0"
+
+    # First install a real working binary
+    if ! "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_NAME" "$version_module" >> "$TEST_LOG_FILE" 2>&1; then
+        log_test_fail "Reinstall when binary is not runnable" "Initial installation failed"
+        return
+    fi
+
+    # Replace with a stub that exits 126 for all invocations, simulating
+    # exec format error (what the kernel returns for a wrong-arch binary).
+    cat > "$test_dir/$TEST_TOOL_NAME" << 'STUB'
+#!/bin/sh
+exit 126
+STUB
+    chmod +x "$test_dir/$TEST_TOOL_NAME"
+
+    # Run download script again with the same version.
+    # The stub won't pass go version -m either, so get_tool_version will fail
+    # and the script will fall through to reinstall. This validates that a
+    # non-runnable binary at the install path does not block reinstallation.
+    if "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_NAME" "$version_module" >> "$TEST_LOG_FILE" 2>&1; then
+        # Verify the reinstalled binary is actually runnable (exit code != 126)
+        local rc=0
+        "$test_dir/$TEST_TOOL_NAME" --help >/dev/null 2>&1 || rc=$?
+        if [[ $rc -ne 126 ]]; then
+            log_test_pass "Reinstall when binary is not runnable"
+        else
+            log_test_fail "Reinstall when binary is not runnable" "Binary still not runnable after reinstall"
+        fi
+    else
+        log_test_fail "Reinstall when binary is not runnable" "Script failed on reinstall"
+    fi
+}
+
+test_version_match_but_not_runnable() {
+    log_test_start "Reinstall when version matches but binary cannot run"
+
+    local test_dir="${TEST_INSTALL_DIR}/version_match_not_runnable"
+    mkdir -p "$test_dir"
+
+    local version_module="golang.org/x/tools/cmd/goimports@v0.24.0"
+
+    # First install a real working binary
+    if ! "$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_NAME" "$version_module" >> "$TEST_LOG_FILE" 2>&1; then
+        log_test_fail "Reinstall when version matches but binary cannot run" "Initial installation failed"
+        return
+    fi
+
+    # Replace with a cross-compiled binary for another target. It retains
+    # embedded module metadata (so version matches) but cannot execute here.
+    if ! build_cross_compiled_go_tool "$test_dir/$TEST_TOOL_NAME" "$version_module"; then
+        log_test_fail "Reinstall when version matches but binary cannot run" "Failed to build cross-compiled binary"
+        return
+    fi
+
+    local expected_version="${version_module##*@}"
+    local embedded_version
+    embedded_version=$(go version -m "$test_dir/$TEST_TOOL_NAME" 2>/dev/null | awk '$1 == "mod" {print $3; exit}')
+    if [[ -z "$embedded_version" ]]; then
+        log_test_fail "Reinstall when version matches but binary cannot run" "Cross-compiled binary missing embedded module version"
+        return
+    elif [[ "$embedded_version" != "$expected_version" ]]; then
+        log_test_fail "Reinstall when version matches but binary cannot run" "Embedded version mismatch: expected $expected_version, got $embedded_version"
+        return
+    fi
+
+    # Run download script — version matches but binary is not runnable, so reinstall
+    local output
+    if output=$("$DOWNLOAD_SCRIPT" --install-dir "$test_dir" "$TEST_TOOL_NAME" "$version_module" 2>&1); then
+        # Verify reinstalled binary is runnable and still has the expected version
+        local rc=0
+        "$test_dir/$TEST_TOOL_NAME" --help >/dev/null 2>&1 || rc=$?
+        local recovered_version
+        recovered_version=$(go version -m "$test_dir/$TEST_TOOL_NAME" 2>/dev/null | awk '$1 == "mod" {print $3; exit}')
+        if [[ $rc -eq 126 ]]; then
+            log_test_fail "Reinstall when version matches but binary cannot run" "Binary not runnable after reinstall"
+        elif [[ -z "$recovered_version" ]]; then
+            log_test_fail "Reinstall when version matches but binary cannot run" "Reinstalled binary missing embedded module version"
+        elif [[ "$recovered_version" != "$expected_version" ]]; then
+            log_test_fail "Reinstall when version matches but binary cannot run" "Reinstalled version mismatch: expected $expected_version, got $recovered_version"
+        else
+            log_test_pass "Reinstall when version matches but binary cannot run"
+        fi
+    else
+        log_test_fail "Reinstall when version matches but binary cannot run" "Script failed on reinstall"
+    fi
+    echo "$output" >> "$TEST_LOG_FILE"
+}
+
 test_custom_install_directory() {
     log_test_start "Test custom install directory"
 
@@ -396,6 +517,8 @@ main() {
     test_missing_arguments
     test_missing_install_dir_argument
     test_invalid_module_format
+    test_non_runnable_binary_reinstall
+    test_version_match_but_not_runnable
     test_custom_install_directory
     test_absolute_path_handling
 
