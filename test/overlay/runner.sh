@@ -76,7 +76,7 @@ usage() {
     echo "Usage: $0 <operator> <release> [--debug]"
     echo "       $0 --help             # Show this help"
     echo ""
-    echo "Operators: lca, nrop, ocloud, talm"
+    echo "Operators: cpm, lca, nrop, ocloud, talm"
     echo "Options:"
     echo "  --debug    Enable debug output for test operations"
     echo ""
@@ -123,10 +123,10 @@ main() {
 
     # Validate operator
     case $operator in
-        lca|nrop|ocloud|talm)
+        cpm|lca|nrop|ocloud|talm)
             ;;
         *)
-            echo "[${SCRIPT_NAME}] Error: Invalid operator '$operator'. Must be one of: lca, nrop, ocloud, talm"
+            echo "[${SCRIPT_NAME}] Error: Invalid operator '$operator'. Must be one of: cpm, lca, nrop, ocloud, talm"
             exit 1
             ;;
     esac
@@ -152,6 +152,7 @@ main() {
         for failed_test in "${FAILED_TEST_FILES[@]}"; do
             print_log "- $failed_test"
         done
+        exit 1
     fi
 
 }

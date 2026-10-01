@@ -97,14 +97,13 @@ define run-overlay-tests
 		if [[ -d "$$release_dir" ]]; then \
 			$(call run-overlay-test-for-release,$(1),$(RELEASE)) \
 		else \
-			echo "Error: Release directory $$release_dir not found"; \
-			exit 1; \
+			echo "Skipping $(1): release $(RELEASE) not found"; \
 		fi; \
 	else \
 		if [[ -n "$(TEST)" ]]; then \
 			echo "Running specific test $(TEST) for all releases of $(1)"; \
 			test_found=false; \
-			for release_dir in $(1)/4.*; do \
+			for release_dir in $(1)/[0-9]*; do \
 				if [[ -d "$$release_dir" ]]; then \
 					release=$$(basename "$$release_dir"); \
 					test_file="$$release_dir/$(TEST)"; \
@@ -121,7 +120,7 @@ define run-overlay-tests
 				exit 1; \
 			fi; \
 		else \
-			for release_dir in $(1)/4.*; do \
+			for release_dir in $(1)/[0-9]*; do \
 				if [[ -d "$$release_dir" ]]; then \
 					release=$$(basename "$$release_dir"); \
 					$(call run-overlay-test-for-release,$(1),$$release) \
@@ -133,18 +132,22 @@ endef
 
 # Test target for all operators
 .PHONY: test-overlay
-test-overlay: test-overlay-lca test-overlay-nrop test-overlay-ocloud test-overlay-talm ## Run all operator tests (use RELEASE=x.y for specific release, DEBUG=1 for verbose output)
+test-overlay: test-overlay-cpm test-overlay-lca test-overlay-nrop test-overlay-ocloud test-overlay-talm ## Run all operator tests (use RELEASE=x.y for specific release, DEBUG=1 for verbose output)
 	@echo "All operator tests completed."
 
 # Test targets for individual operators
 # Usage examples:
-#   make test-overlay-<operator>                                      # Run all releases for operator 
+#   make test-overlay-<operator>                                      # Run all releases for operator
 #   make test-overlay-<operator> RELEASE=4.20                         # Run specific release for operator
 #   make test-overlay-<operator> DEBUG=1                              # Run all releases for operator with verbose output
 #   make test-overlay-<operator> RELEASE=4.20 DEBUG=1                 # Run specific release for operator with verbose output
 #   make test-overlay-<operator> TEST=00.test.sh                      # Run a specific test file for all releases of operator
 #   make test-overlay-<operator> TEST=00.test.sh RELEASE=4.20         # Run a specific test file for a specific release
 #   make test-overlay-<operator> TEST=00.test.sh RELEASE=4.20 DEBUG=1 # Run a specific test file for a specific release with verbose output
+.PHONY: test-overlay-cpm
+test-overlay-cpm: ## Run tests for CPM operator (use RELEASE=x.y for specific release, DEBUG=1 for verbose output)
+	$(call run-overlay-tests,cpm)
+
 .PHONY: test-overlay-lca
 test-overlay-lca: ## Run tests for LCA operator (use RELEASE=x.y for specific release, DEBUG=1 for verbose output)
 	$(call run-overlay-tests,lca)
