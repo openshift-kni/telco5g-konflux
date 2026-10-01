@@ -23,6 +23,7 @@ RELEASE_VARIABLES_ALLOWED=(
     "display_name"
     "manager_version"
     "min_kube_version"
+    "node_agent"
     "recert_image"
     "subscription_badges"
     "version"
@@ -475,6 +476,27 @@ overlay_release()
                 ;;
             "min_kube_version")
                 VALUE_ENV=$value yq e -i '.spec.minKubeVersion = strenv(VALUE_ENV)' "$ARG_CSV_FILE" || value_error=1
+                ;;
+            "node_agent")
+                if [[ "$value" == PLACEHOLDER_NODE_AGENT ]]; then
+                    value=""
+                    local j=0
+                    for image_key in "${IMAGE_TO_TARGET_KEYS[@]}"; do
+                        if [[ "$image_key" == "$key" ]]; then
+                            value="${IMAGE_TO_TARGET_VALUES[$j]}"
+                            break
+                        fi
+                        j=$((j + 1))
+                    done
+                    if [[ -z "$value" ]]; then
+                        print_log "Error: no node agent pinned for key: $key. Check the pinning file: $ARG_PINNING_FILE" >&2
+                        value_error=1
+                    fi
+                fi
+
+                if [[ $value_error == 0 ]]; then
+                    VALUE_ENV="$value" yq e -i '.spec.install.spec.deployments[0].spec.template.spec.containers[0].env |= ((. // [] | map(select(.name != "RELATED_IMAGE_NODE_AGENT"))) + [{"name": "RELATED_IMAGE_NODE_AGENT", "value": strenv(VALUE_ENV)}])' "$ARG_CSV_FILE" || value_error=1
+                fi
                 ;;
             "recert_image")
                 if [[ "$value" == PLACEHOLDER_RECERT_IMAGE ]]; then
