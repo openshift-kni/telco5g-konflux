@@ -165,6 +165,40 @@ check_go() {
     echo "Using Go: $(go version)"
 }
 
+# Retry only transient HTTP/2 peer failures from Go module and checksum downloads.
+# Keep the Go checksum database enabled and surface all other install failures at once.
+install_go_tool() {
+    local install_dir="$1"
+    local go_module="$2"
+    local max_attempts=4
+    local attempt status delay
+    local output_file
+    output_file=$(mktemp)
+
+    for ((attempt = 1; attempt <= max_attempts; attempt++)); do
+        # Unset cross-compilation flags because go install cannot use GOBIN with them.
+        # tee keeps progress visible while retaining the error for classification.
+        set +e
+        GOBIN="$install_dir" GOARCH="" GOOS="" go install "$go_module" 2>&1 | tee "$output_file"
+        status=${PIPESTATUS[0]}
+        set -e
+
+        if [[ $status -eq 0 ]]; then
+            rm -f "$output_file"
+            return 0
+        fi
+        if ! grep -Eq 'stream error: stream ID [0-9]+; INTERNAL_ERROR; received from peer' "$output_file" ||
+            [[ $attempt -eq $max_attempts ]]; then
+            rm -f "$output_file"
+            return "$status"
+        fi
+
+        delay=$((2 ** attempt))
+        echo "Transient Go download error; retrying ${go_module} in ${delay}s (${attempt}/${max_attempts})" >&2
+        sleep "$delay"
+    done
+}
+
 main() {
     # Parse command line arguments
     local install_dir="${INSTALL_DIR:-${DEFAULT_INSTALL_DIR}}"
@@ -310,10 +344,8 @@ main() {
         fi
 
         # Install the tool with GOBIN pointing to our install directory.
-        # Unset GOARCH/GOOS so go install doesn't treat this as a cross-compilation
-        # (go refuses to install cross-compiled binaries when GOBIN is set).
         echo "Downloading ${go_module}..."
-        if ! GOBIN="${install_dir}" GOARCH="" GOOS="" go install "${go_module}"; then
+        if ! install_go_tool "${install_dir}" "${go_module}"; then
             echo "ERROR: Failed to install ${go_module}"
             echo "Please check that the module path and version are correct"
             exit 1

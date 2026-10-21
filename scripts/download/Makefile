@@ -100,6 +100,7 @@ test-containerized: ## Run tests for all download scripts
 		./tests/test-download-yamllint.sh && \
 		./tests/test-download-shellcheck.sh && \
 		./tests/test-download-bashate.sh && \
+		./tests/test-download-go-tool-retry.sh && \
 		./tests/test-download-go-tool.sh"
 	@echo "All download script tests completed successfully."
 
@@ -115,6 +116,7 @@ test-local: ## Run tests locally (may be affected by system-installed tools)
 	$(SCRIPT_DIR)/tests/test-download-yamllint.sh && \
 	$(SCRIPT_DIR)/tests/test-download-shellcheck.sh && \
 	$(SCRIPT_DIR)/tests/test-download-bashate.sh && \
+	$(SCRIPT_DIR)/tests/test-download-go-tool-retry.sh && \
 	$(SCRIPT_DIR)/tests/test-download-go-tool.sh
 	@echo "All download script tests completed successfully."
 
