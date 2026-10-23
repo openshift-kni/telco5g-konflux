@@ -18,6 +18,16 @@ tests/
 
 ## Running Tests
 
+### Entitlement Substitution Regression Test
+
+Run `make -C scripts/rpm-lock test-unit` from the repository root. This test
+requires Bash and standard shell utilities, without containers, credentials, or
+network access. It captures the scripts generated for both RHEL versions and
+executes their YAML substitution commands, covering literal `$SSL_CLIENT_CERT`
+and `$SSL_CLIENT_KEY` placeholders (including quoted values), existing entitlement
+paths, and unrelated custom certificate paths. Host environment values must not
+replace the placeholders when the container script is generated.
+
 ### Quick Start
 
 Run all tests (UBI mode):

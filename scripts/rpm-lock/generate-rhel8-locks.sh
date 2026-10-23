@@ -257,6 +257,9 @@ if [ "${USE_RHSM_RHEL9}" = "true" ]; then
 
         # Also update rpms.out.yaml with the actual certificate paths
         echo "Updating SSL certificate paths in rpms.out.yaml..."
+        # Resolve literal placeholders using certificates from this container.
+        sed -i "s|[$]SSL_CLIENT_CERT|\$CERT_FILE|g" /source/rpms.out.yaml
+        sed -i "s|[$]SSL_CLIENT_KEY|\$KEY_FILE|g" /source/rpms.out.yaml
         sed -i "s|sslclientcert: /etc/pki/entitlement/[^[:space:]]*\.pem|sslclientcert: \$CERT_FILE|g" /source/rpms.out.yaml
         sed -i "s|sslclientkey: /etc/pki/entitlement/[^[:space:]]*-key\.pem|sslclientkey: \$KEY_FILE|g" /source/rpms.out.yaml
     else

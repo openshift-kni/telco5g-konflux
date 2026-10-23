@@ -60,6 +60,10 @@ filter-unused-repos: ## Filter unused repositories from redhat.repo files (use R
 	@echo "Filtering unused repositories from $(REPO_FILE)..."
 	$(PROJECT_DIR)/konflux-filter-unused-repos.sh $(REPO_FILE) > $(REPO_FILE).tmp && mv $(REPO_FILE).tmp $(REPO_FILE)
 
+.PHONY: test-unit
+test-unit: ## Test entitlement substitutions without containers or RHSM credentials
+	@bash $(PROJECT_DIR)/tests/test-entitlement-substitution.sh
+
 .PHONY: test-integration
 test-integration: ## Run integration tests for both RHEL 8 and RHEL 9 scripts (UBI mode)
 	@echo "Running integration tests in UBI mode..."
